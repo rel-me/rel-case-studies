@@ -47,13 +47,13 @@ def run(args):
     if not output.is_absolute():
         output = ROOT / output
     output.mkdir(parents=True, exist_ok=True)
-    # Hold the lock across the child process. Repeated make invocations must not
+    # Hold the lock across the child process. Repeated launcher invocations must not
     # launch concurrent workers against the same saved queue.
     with (output / 'run.lock').open('a') as lock:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
-            raise RuntimeError('A make run crawl is already running; stop it with Ctrl-C before restarting') from None
+            raise RuntimeError('A crawl is already running; stop it with Ctrl-C before restarting') from None
         result = migrate(output / 'zillow.sqlite3')
         if result['status'] == 'migrated':
             print(json.dumps(result), flush=True)

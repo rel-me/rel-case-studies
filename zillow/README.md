@@ -9,8 +9,8 @@ records, lookup outcomes, rendered captures, and property observations.
 Install `/Applications/REL.app` and configure the **OxylabsDatacenter** Profile:
 
 ```sh
-make -C zillow run
-make -C zillow run ARGS='--max-addresses 10000 --max-pages 20000'
+./zillow/run.sh
+./zillow/run.sh --max-addresses 10000 --max-pages 20000
 ```
 
 The first run imports GIS data if no inventory exists. The launcher checks
@@ -26,10 +26,14 @@ timeout and retry delay can be set with `--navigation-timeout` and `--retry-dela
 Exhausted failures and access challenges stop the run. Out-of-area properties
 and mismatched addresses are recorded without stopping the crawl.
 
+Run the script from any directory; paths resolve relative to the case study.
+Pass crawler options directly, without an `ARGS` variable. `./zillow/run.sh setup`
+installs dependencies without launching REL. `./zillow/run.sh --help` shows usage.
+
 ## Inventory
 
 ```sh
-make -C zillow inventory
+./zillow/run.sh inventory
 ```
 
 The importer queries the city's public ArcGIS parcel API directly. This is the
@@ -77,7 +81,7 @@ pending requests; it does not automatically retry terminal failures. To explicit
 retry failed timeout, cancellation, or network-interruption lookups first:
 
 ```sh
-make -C zillow run ARGS='--retry-failed --max-addresses 10000 --max-pages 20000'
+./zillow/run.sh --retry-failed --max-addresses 10000 --max-pages 20000
 ```
 
 Recovery requests get stable keys tied to the recorded failure and a fresh bounded
@@ -123,13 +127,13 @@ and rendered text remain available for review.
 After an existing crawler stops, migrate saved data without starting a crawl:
 
 ```sh
-make -C zillow migrate
+./zillow/run.sh migrate
 ```
 
 This command refuses to run while the crawler owns `output/run.lock`. It creates
 a complete SQLite backup alongside the database, backfills units and bathroom
 evidence from saved captures, renames `asking_price` to `price`, and normalizes
-unknown prices. Changes are transactional and rerunning is safe. `make run`
+unknown prices. Changes are transactional and rerunning is safe. `run.sh`
 also applies the migration under the same lock before starting its next crawl.
 A crawler already running keeps its loaded code until it exits. Its session,
 request queue, captures, and inventory outcomes are preserved by the migration.
