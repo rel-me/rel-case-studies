@@ -39,5 +39,5 @@ both were outside the configured 10-mile radius. Travel/shipping costs are not
 included in any comparison.
 
 Marketplace prices and availability were read through REL from rendered detail
-pages. The monitor uses the dated records in `price_references.json` for alert
-context; it suppresses stale comparisons after seven days.
+pages. This document is a historical example. The native REL Action researches current
+comparisons during each run and does not use this document as a live price feed.

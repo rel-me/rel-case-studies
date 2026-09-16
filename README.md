@@ -1,11 +1,10 @@
 # REL case studies
 
-Runnable browser research projects built with REL, rel-crawlee, and rel-crawler.
+Browser research and monitoring case studies built with REL.
 Read the [case studies on the REL website](https://rel.me/case-studies)
 and the [public REL tools documentation](https://github.com/rel-me/rel-tools).
 
-Each case study provides an executable `run.sh` in its own directory to run or
-resume the project. Pass options directly to that script.
+Each case study documents its runtime: a crawler launcher or a native REL Action.
 
 ## Zillow / Santa Cruz
 
@@ -19,14 +18,10 @@ Requires Release REL.app, Python 3.11+, Git, and an OxylabsDatacenter Profile. L
 
 ## Facebook Marketplace / Santa Cruz
 
-[Find a used stroller wagon within 10 miles and alert the REL WhatsApp group](facebook-marketplace/README.md).
-Uses REL browser captures, conservative location checks, and persistent alert deduplication.
+[Monitor used stroller wagons within 10 miles using a native REL Action](facebook-marketplace/README.md).
+Runs daily at 9 AM, researches online and other-area Marketplace prices, and
+posts new matches to the REL WhatsApp group through WhatsApp Web.
 
-```sh
-./facebook-marketplace/run.sh setup
-cp facebook-marketplace/config.example.json facebook-marketplace/config.json
-./facebook-marketplace/run.sh
-```
-
-Preview mode is the default. Link your WhatsApp account with `wacli auth`, then use
-`--send --watch` for recurring group alerts. Includes dated online and other-area Marketplace price comparisons. Requires wacli and REL.
+Create the Action inside REL with the supplied [prompt](facebook-marketplace/ACTION.md).
+REL manages scheduling and browser execution; no scripts or external scheduler
+are required. Keep REL running and WhatsApp Web signed in.

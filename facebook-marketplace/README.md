@@ -1,130 +1,83 @@
-# A used stroller wagon near Santa Cruz, with WhatsApp group alerts
+# A daily Marketplace monitor entirely inside REL
 
-Find a used **stroller wagon within 10 miles of Santa Cruz**, then post the price,
-condition, approximate distance, listing link, and available price comparisons to
-**the WhatsApp group REL**. REL handles Facebook browsing; `wacli` sends to the
-linked WhatsApp account's group. SQLite deduplicates by listing ID and group JID.
+A native REL Action checks for a **used stroller wagon within 10 miles of Santa
+Cruz**, compares its price with current online offers and other Facebook
+Marketplace areas, and posts new matches to the **REL WhatsApp group** through
+WhatsApp Web in the same browser session.
 
-## Run
+REL owns the schedule, browser session, AI execution, and run history. This case
+study has no Python runner, shell loop, wacli dependency, GitHub Action, or
+external scheduler.
 
-Requires macOS, Python 3.11+, Git, an open Release REL.app, an existing REL
-Profile, and [wacli](https://wacli.sh). The example selects the installed
-`OxylabsDatacenter` Profile; change it to an existing Profile on your Mac if needed.
+## Set up in REL
 
-```sh
-./facebook-marketplace/run.sh setup
-cp facebook-marketplace/config.example.json facebook-marketplace/config.json
-./facebook-marketplace/run.sh                 # preview only; no WhatsApp needed
-```
+1. Open a persistent REL session and configure a working AI provider/model.
+2. Sign in to [WhatsApp Web](https://web.whatsapp.com) in that session and verify
+   that the intended group is named exactly **REL**. Facebook must also be
+   accessible in that session; sign in if required.
+3. Open the session's **Bottom Panel → Actions → Add Action**.
+4. Name the Action **Santa Cruz stroller wagon** and paste [ACTION.md](ACTION.md)
+   into **Step 1**.
+5. Set **When → Schedule**, select all seven days, and choose **9:00 AM**.
+6. Leave **Enabled** on, **Shortcut** and **Webhook** off, and **On Error → Stop**
+   under Advanced. Save.
+7. Use the Action's context menu → **Run Now** to validate its browser access and
+   group destination. This is a live action: it can post a verified new match.
 
-For group alerts, link the CLI from WhatsApp on your phone under **Linked devices**:
+This configuration was saved in local **Session2564** on September 16, 2026.
+The action list showed one daily action with its next run at **Thursday 9:00 AM**.
+The temporary half-hourly actions were removed. Session IDs are local; readers
+should create the action in their own persistent session.
 
-```sh
-wacli auth
-wacli groups refresh
-./facebook-marketplace/run.sh --send
-./facebook-marketplace/run.sh --send --watch  # repeat every 30 minutes
-```
+REL must remain running and the Mac awake at the scheduled time. The clock
+follows the Mac's time zone (America/Los_Angeles on this setup). Daily execution
+is intentional until native interval scheduling is available. This is not a
+cloud-hosted or always-on job.
 
-WhatsApp desktop login does not automatically authenticate `wacli`. The CLI is
-installed on this Mac but was not linked during setup, so no messages were sent.
-The code checks authentication before starting a live scan. It refreshes joined
-groups and requires exactly one group named `REL`. No fuzzy recipient matching
-is used. If names collide, set `whatsapp_group_jid` to the intended group's JID
-from `wacli --json groups list --query REL`. The name must still match exactly.
+## What each run does
 
-The watch loop runs in the foreground; keep the Mac awake and stop with Ctrl-C.
-It exits visibly on browser, extraction, or sending errors. `interval_minutes`
-changes the frequency (minimum five minutes). No background job is installed.
+The prompt first verifies WhatsApp access and an unambiguous group destination.
+It then searches Marketplace, inspecting up to 20 relevant listing links and
+two search-result scrolls. It requires a complete used child stroller wagon,
+availability and local collection, and credible detail-page location evidence.
+It skips accessories alone, rentals, new goods, sold/pending items and uncertain
+locations. Facebook can recommend distant listings despite the radius setting;
+the search filter alone is never treated as distance evidence.
 
-`--session-id Session123` adopts an existing REL session. Otherwise the monitor
-creates one using the configured Profile and saves it in `output/session.json`.
-A missing session fails explicitly. If Facebook requires login, sign in in REL
-and resume. A dismissible public login overlay is closed automatically.
+For an eligible item, REL researches its brand/model again on current retailer
+or manufacturer pages and up to three Marketplace listings elsewhere in
+California. Alerts include links, observation date, price differences and
+condition/accessory caveats. Unknown comparisons stay unknown. The historical
+[Pronto price comparison](PRICE-COMPARISON.md) is an example, not a price feed.
 
-## Matching and distance
+Before posting, REL searches the group for the stable listing ID or URL, verifies
+the destination again, and checks the outgoing message afterward. It sends no
+WhatsApp message when there are no new matches. Login failures, unclear group
+identity or uncertain delivery stop the run and are reported in REL chat.
 
-The search URL uses Santa Cruz's observed Marketplace location ID and Facebook's
-10-mile radius parameter (`radius=16`, in kilometers). Search results can include
-recommendations far outside that radius. Each listing is opened by clicking its
-rendered link, captured, and followed by browser-history Back before proceeding.
+These checks are agent instructions, not deterministic database constraints.
+Group-history availability, model interpretation, map precision and website
+changes can limit matching and duplicate detection. When evidence is incomplete,
+the prompt tells the agent to stop or skip instead of guessing. It does not
+promise complete Marketplace coverage, exact pickup distances, or exactly-once
+delivery.
 
-Only the current **Marketplace Listing Viewer** is parsed. Search-page JSON can
-remain in the DOM after navigation and describe entirely different listings.
-The monitor requires all query words in the title, an explicit used condition,
-a Message action, and no sold/pending marker. Accessories, rentals, wanted ads,
-and pet wagons are excluded conservatively; bundles mentioning accessories may
-also be excluded. Availability is the page's advertised state, not a seller's
-confirmation. The monitor never contacts sellers.
+## Operation
 
-Distance is measured in a straight line from `(36.9741, -122.0308)` in central
-Santa Cruz, using the listing's rendered approximate map. The entire displayed
-uncertainty circle must fit inside 10 miles; missing/ambiguous maps and boundary
-cases are excluded. Facebook's approximate map is not an exact pickup address.
-`latitude`, `longitude`, and `radius_miles` configure the local distance check;
-update the search URL's radius too when expanding the search.
+Inspect the Action status and the session chat for results. Edit the same Action
+to change its time or criteria; disable it to pause. Preserve the session and its
+WhatsApp login. No local CLI authentication or phone number configuration is
+needed. A WhatsApp Cloud API webhook is not used for this existing consumer group.
 
-A pass checks at most 40 rendered listing links. It does not scroll indefinitely
-or promise complete Marketplace coverage. Empty visible results stop for review
-because the monitor cannot reliably distinguish an empty search from an access
-or layout change. A failed target also stops alerts for that pass. A completed
-pass starts a fresh checkpoint on the next scan, so new listings can be found.
-An interrupted pass resumes its checkpoint. Captures older than 15 minutes are
-never used to send alerts; rerunning starts a fresh pass when this guard fires.
+The checked-in artifact is the reusable prompt plus these native setup
+instructions. There is no automatic installer and checking out this repository
+does not create or enable an Action on another Mac.
 
-## Price comparisons
+## Local validation
 
-[Read the current Santa Cruz Pronto comparison](PRICE-COMPARISON.md).
-`price_references.json` contains dated, sourced observations for comparable
-Pronto One wagons: a new online price and used Facebook listings in Los Angeles
-and Durham, CA. Pronto alerts show the dollar and percentage difference against
-each reference, with source links and a model/condition caveat.
-
-These are researched snapshots, **not automatically refreshed prices**. They
-expire after seven days; the alert then says the comparison needs refreshing.
-Other brands and explicitly different Pronto models receive “comparison unavailable”
-instead of an unrelated discount claim. Recheck source pages and update the JSON's
-prices, notes and `checked_at` together to refresh the comparison. An unconfirmed
-local Pronto model/year is always labeled as such.
-
-## WhatsApp and duplicate prevention
-
-The first live pass alerts on existing matches. Preview mode prints the message
-without consuming an alert. Live mode reserves a listing/group pair before sending
-and marks it `submitted` only after `wacli` acknowledges the destination and message
-ID. This is not proof that every group member received or read it. Price changes
-alone do not trigger another alert. Website text is passed literally as an argument.
-
-An uncertain send stays reserved to prevent automatic duplicates. After checking
-the group yourself, allow another attempt for that listing:
-
-```sh
-./facebook-marketplace/run.sh --reset-alert LISTING_ID
-./facebook-marketplace/run.sh --send
-```
-
-The reset clears that listing's WhatsApp reservations across groups. Previous
-Messages-app alert records are retained separately and do not suppress WhatsApp
-alerts. For an exhausted browser pass, inspect its captures, then move
-`output/active.json` aside to start a new pass.
-
-## Files and validation
-
-- `output/session.json`: saved Facebook REL session.
-- `output/passes/`: checkpoints, rendered HTML, metadata and matching decisions.
-- `output/marketplace.sqlite3`: observations and WhatsApp alert status.
-- `output/run.lock`: prevents overlapping monitors.
-- `config.json`: local settings; ignored by Git.
-- `price_references.json`: dated public price references; no account credentials.
-
-```sh
-cd facebook-marketplace
-.venv/bin/python -m unittest -v
-```
-
-Tests use synthetic HTML, a fake sender, and mocked CLI responses. They cover
-matching, distance boundaries, availability, recovery, group routing, ambiguous
-sends, price calculations and stale references. Tests do not send messages.
-
-The browser integration uses the pinned public
-[REL crawler](https://github.com/rel-me/rel-tools/tree/29678853803a37b7eb13cdeafcb40612d4ca40a3/crawler).
+A native **Run Now** validation on September 16, 2026 reached WhatsApp Web and
+reported that QR-code or phone-number login was required. It inspected no
+Facebook listings and sent no messages. The Action table displayed **Completed**
+because the agent finished reporting the blocker; that status does not mean an
+alert was delivered. Link WhatsApp in Session2564 before the next scheduled run.
+An end-to-end group alert has not yet been validated.

@@ -1,2 +1,0 @@
-rel-crawler @ git+https://github.com/rel-me/rel-tools.git@29678853803a37b7eb13cdeafcb40612d4ca40a3#subdirectory=crawler
-beautifulsoup4==4.14.3
