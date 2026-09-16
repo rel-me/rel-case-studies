@@ -1,0 +1,12 @@
+{
+  "query": "stroller wagon",
+  "latitude": 36.9741,
+  "longitude": -122.0308,
+  "radius_miles": 10,
+  "search_url": "https://www.facebook.com/marketplace/106277849402612/search/?query=stroller%20wagon&exact=false&radius=16",
+  "profile": "OxylabsDatacenter",
+  "interval_minutes": 30,
+  "max_listings": 40,
+  "whatsapp_group": "REL",
+  "whatsapp_group_jid": ""
+}

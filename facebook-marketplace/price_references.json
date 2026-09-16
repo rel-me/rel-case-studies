@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-09-16T21:11:56.091407+00:00",
+  "max_age_days": 7,
+  "family": "Pronto One",
+  "references": [
+    {
+      "channel": "online-new",
+      "area": "Pronto USA",
+      "price": 850,
+      "url": "https://prontostroller.com/products/pronto-one-grey-with-white-frame",
+      "notes": "Grey/white-frame starter package; page offers Add to cart. Tax and shipping excluded. Exact local model/year unconfirmed."
+    },
+    {
+      "channel": "facebook-used",
+      "area": "Los Angeles (Eagle Rock)",
+      "price": 375,
+      "url": "https://www.facebook.com/marketplace/item/750463994757872/",
+      "notes": "Used - Good, dark grey/black frame; seller reports replacement handle grips and local pickup only."
+    },
+    {
+      "channel": "facebook-used",
+      "area": "Durham, CA",
+      "price": 650,
+      "url": "https://www.facebook.com/marketplace/item/1542379533645870/",
+      "notes": "Used - Good; includes tray, mosquito/blackout covers, cup holder and organizer. Bundle differs from local listing."
+    }
+  ]
+}

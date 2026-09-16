@@ -1,6 +1,6 @@
 # REL case studies
 
-Runnable browser research projects built with REL and rel-crawlee.
+Runnable browser research projects built with REL, rel-crawlee, and rel-crawler.
 Read the [case studies on the REL website](https://rel.me/case-studies)
 and the [public REL tools documentation](https://github.com/rel-me/rel-tools).
 
@@ -16,3 +16,17 @@ resume the project. Pass options directly to that script.
 ```
 
 Requires Release REL.app, Python 3.11+, Git, and an OxylabsDatacenter Profile. Local data and credentials are not committed.
+
+## Facebook Marketplace / Santa Cruz
+
+[Find a used stroller wagon within 10 miles and alert the REL WhatsApp group](facebook-marketplace/README.md).
+Uses REL browser captures, conservative location checks, and persistent alert deduplication.
+
+```sh
+./facebook-marketplace/run.sh setup
+cp facebook-marketplace/config.example.json facebook-marketplace/config.json
+./facebook-marketplace/run.sh
+```
+
+Preview mode is the default. Link your WhatsApp account with `wacli auth`, then use
+`--send --watch` for recurring group alerts. Includes dated online and other-area Marketplace price comparisons. Requires wacli and REL.
