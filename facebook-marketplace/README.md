@@ -1,4 +1,4 @@
-# A daily Marketplace monitor entirely inside REL
+# A repeating Marketplace monitor entirely inside REL
 
 A native REL Action checks for a **used stroller wagon within 10 miles of Santa
 Cruz**, compares its price with current online offers and other Facebook
@@ -18,21 +18,26 @@ external scheduler.
 3. Open the session's **Bottom Panel → Actions → Add Action**.
 4. Name the Action **Santa Cruz stroller wagon** and paste [ACTION.md](ACTION.md)
    into **Step 1**.
-5. Set **When → Schedule**, select all seven days, and choose **9:00 AM**.
+5. Set **When → Repeat every**, **Minutes → 30**, and **Ends → Never**.
+   Edit the existing daily Action if one is already installed; do not create
+   additional clock-time actions.
 6. Leave **Enabled** on, **Shortcut** and **Webhook** off, and **On Error → Stop**
    under Advanced. Save.
 7. Use the Action's context menu → **Run Now** to validate its browser access and
    group destination. This is a live action: it can post a verified new match.
 
-This configuration was saved in local **Session2564** on September 16, 2026.
-The action list showed one daily action with its next run at **Thursday 9:00 AM**.
-The temporary half-hourly actions were removed. Session IDs are local; readers
-should create the action in their own persistent session.
+This setup requires a REL build containing repeating actions (REL change #461).
+The prior daily Action lives in local **Session2564**; session IDs are local,
+so readers should use their own persistent session. As of the September 16
+configuration check, the installed REL 0.1.65 app still offered only Manual,
+Schedule, and Event. Its updater reported no newer version. The local Action
+therefore remains daily at 9 AM until a compatible app is installed and the
+repeat setting can be saved. The instructions above describe the intended
+30-minute configuration, not a verified change to that older running app.
 
-REL must remain running and the Mac awake at the scheduled time. The clock
-follows the Mac's time zone (America/Los_Angeles on this setup). Daily execution
-is intentional until native interval scheduling is available. This is not a
-cloud-hosted or always-on job.
+REL must remain running and the Mac awake. Native repeat scheduling skips
+missed runs and prevents overlapping runs; it does not create catch-up bursts.
+Use a single repeating Action. This is not a cloud-hosted or always-on job.
 
 ## What each run does
 
