@@ -228,4 +228,3 @@ def save_search(db, capture, data):
         save_home(db, capture, url, facts)
         seen.add(zpid)
     return len(seen)
-
