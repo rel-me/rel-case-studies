@@ -165,7 +165,7 @@ def database(path):
     columns = {row[1] for row in db.execute('PRAGMA table_info(observations)')}
     if 'asking_price' in columns:
         db.close()
-        raise RuntimeError('Database needs migration: run make migrate after the crawler stops')
+        raise RuntimeError('Database needs migration: run ./run.sh migrate after the crawler stops')
     db.executescript((ROOT / "schema.sql").read_text())
     return db
 
