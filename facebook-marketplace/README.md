@@ -9,6 +9,30 @@ REL owns the schedule, browser session, AI execution, and run history. This case
 study has no Python runner, shell loop, wacli dependency, GitHub Action, or
 external scheduler.
 
+## Load the Profile into REL
+
+The reusable [PROFILE.json](PROFILE.json) includes the Action, daily schedule,
+editable inputs, and setup checklist. It requires a REL build supporting Profile
+setup version 1 and Profile JSON transfer version 2. Older versions of REL reject
+this package; the manual instructions below remain available.
+
+1. Copy the complete contents of `PROFILE.json`.
+2. In **Settings → Profiles → Import Profile**, paste the JSON and import it.
+3. Choose **New Session from Profile → Marketplace monitor**. Customize the
+   search, location, radius, and WhatsApp group, then create the session.
+4. Choose a working AI provider/model, sign in to WhatsApp and Facebook in that
+   session, and verify access and the intended group yourself.
+5. Open **Actions → Review Setup**, review the prompt and the daily 9 AM schedule,
+   confirm the checklist, and choose **Enable Actions**. Times follow your Mac's
+   time zone. Enabling makes the Action eligible for future scheduled runs.
+6. **Run Now** is a live run and can post a verified new match. Reviewing setup
+   does not run the Action or send a message.
+
+Import creates a Profile only. Session creation makes independent, disabled
+Actions with fresh IDs. The package contains no cookies, API keys, webhook
+secrets, or session IDs. Logins, runtime history, and Action edits stay local.
+This version uses WhatsApp Web and does not configure a webhook.
+
 ## Set up in REL
 
 1. Open a persistent REL session and configure a working AI provider/model.
@@ -69,9 +93,10 @@ to change its time or criteria; disable it to pause. Preserve the session and it
 WhatsApp login. No local CLI authentication or phone number configuration is
 needed. A WhatsApp Cloud API webhook is not used for this existing consumer group.
 
-The checked-in artifact is the reusable prompt plus these native setup
-instructions. There is no automatic installer and checking out this repository
-does not create or enable an Action on another Mac.
+The checked-in artifacts are the Profile package, reusable prompt, and native
+setup instructions. Importing `PROFILE.json` and creating a session installs
+disabled Actions.
+Checking out this repository alone does not create or enable an Action.
 
 ## Local validation
 
@@ -81,3 +106,9 @@ Facebook listings and sent no messages. The Action table displayed **Completed**
 because the agent finished reporting the blocker; that status does not mean an
 alert was delivered. Link WhatsApp in Session2564 before the next scheduled run.
 An end-to-end group alert has not yet been validated.
+
+The Profile package was validated in an isolated REL Debug build: Profile JSON
+import, binary archive export/import, customized radius substitution, and creation
+of a disabled session Action all passed. The setup review showed the daily 9 AM
+schedule and left activation disabled until checklist confirmation. This validates
+installation, not live Marketplace research or WhatsApp delivery.
