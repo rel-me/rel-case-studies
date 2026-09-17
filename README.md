@@ -6,7 +6,7 @@ and the [public REL tools documentation](https://github.com/rel-me/rel-tools).
 
 Each case study documents its runtime: a crawler launcher or a native REL Action.
 
-## Zillow / Santa Cruz
+## Zillow property research with REL
 
 [Read the case study and run the crawler](zillow/README.md). Match official parcel addresses to Zillow, retaining property facts and source captures in SQLite.
 
