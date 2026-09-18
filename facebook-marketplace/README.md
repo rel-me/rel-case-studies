@@ -11,11 +11,12 @@ The Action editor supports **Repeat every → 30 minutes → Ends: Never**. Prof
 setup version 1 only encodes weekday/clock schedules, so the portable template
 creates a manual Action; set the interval after creating the session.
 
-Native WhatsApp pairing and saved group selection work in Settings, but native
-WhatsApp delivery is not yet an Action completion option. This package therefore
-performs research and returns candidate alerts in REL chat only. It does not open
-WhatsApp Web or send messages. Automatic WhatsApp notifications remain blocked
-until native delivery and durable duplicate tracking are implemented.
+Native WhatsApp completion works in REL 0.1.69. In the Action editor select
+**When finished → WhatsApp** to send the final response to the saved group.
+The [quiet-result fix](https://github.com/rel-me/rel/pull/478) suppresses a leading
+`NO_ALERT` response; it must be installed before using this prompt unattended.
+Durable tracking of previously alerted listing IDs remains necessary to prevent
+repeated alerts. Automatic operation stays paused until that is implemented.
 
 ## Install
 
@@ -30,8 +31,8 @@ until native delivery and durable duplicate tracking are implemented.
 4. In **Actions → Edit Action**, choose **Repeat every**, **30 minutes**, and
    **Ends → Never**. Leave disabled while access and delivery are incomplete.
 5. Inspect **Review Setup**, then use **Run Now** for a one-time research check.
-   It can run while automatic scheduling is disabled. Results belong in REL chat;
-   no WhatsApp alert is sent by this package.
+   REL 0.1.69 requires the Action to be enabled for Run Now; PR #478 fixes this.
+   Selecting WhatsApp makes a successful run send its final response to the saved group.
 
 Import creates a Profile only. Creating the session installs its Action with
 fresh IDs. Existing Action edits and run history are not transferred. REL must
@@ -70,3 +71,25 @@ leave unavailable comparisons unknown. The historical
 
 Facebook sign-in, a successful full Action run, and native notification delivery
 still require validation. Local session IDs are evidence for this Mac only.
+
+## Retest on REL 0.1.69
+
+Signed-in Marketplace access and native WhatsApp completion were verified on
+September 17. Run Now originally failed because the Action was disabled; the
+error popover exposed that cause. Enabling it allowed execution. A broad request
+hit the 24,000-token budget. Bounded single-listing research completed, but its
+first answer invented a date and rejected a usable wagon for lack of explicit
+seller confirmation. The prompt now avoids those unsupported requirements and
+limits browser calls and response size.
+
+The final native delivery validation used a researched alert: Santa Cruz Pronto
+at $500, an in-stock manufacturer Pronto One grey/white starter package at $850,
+and a used Pronto One in Eagle Rock/Los Angeles at $375. It states model, condition,
+and approximate-location caveats. REL reported Completed after native WhatsApp
+sending. This validates the send path using a supplied verified alert; the full
+automated research-to-delivery workflow is not yet validated unattended.
+
+Session2565 retains the 30-minute configuration and native WhatsApp completion,
+but is disabled. The old daily WhatsApp Web Action in Session2564 is also disabled.
+Listing 1380767834231130 was added to the local prompt's already-alerted list.
+This manual record is not durable automatic deduplication.
