@@ -1,114 +1,95 @@
-# A daily Marketplace monitor entirely inside REL
+# Marketplace research in REL
 
-A native REL Action checks for a **used stroller wagon within 10 miles of Santa
-Cruz**, compares its price with current online offers and other Facebook
-Marketplace areas, and posts new matches to the **REL WhatsApp group** through
-WhatsApp Web in the same browser session.
+Find a used stroller wagon within **10 miles of Santa Cruz**, with current online
+and other-area Facebook Marketplace price comparisons. The intended notification
+destination is the **REL WhatsApp group**, using REL's native WhatsApp connection.
 
-REL owns the schedule, browser session, AI execution, and run history. This case
-study has no Python runner, shell loop, wacli dependency, GitHub Action, or
-external scheduler.
+## Current capabilities
 
-## Load the Profile into REL
+REL 0.1.68 imports Profile setup definitions and creates disabled native Actions.
+The Action editor supports **Repeat every → 30 minutes → Ends: Never**. Profile
+setup version 1 only encodes weekday/clock schedules, so the portable template
+creates a manual Action; set the interval after creating the session.
 
-The reusable [PROFILE.json](PROFILE.json) includes the Action, daily schedule,
-editable inputs, and setup checklist. It requires a REL build supporting Profile
-setup version 1 and Profile JSON transfer version 2. Older versions of REL reject
-this package; the manual instructions below remain available.
+Native WhatsApp completion works in REL 0.1.69. In the Action editor select
+**When finished → WhatsApp** to send the final response to the saved group.
+The [quiet-result fix](https://github.com/rel-me/rel/pull/478) suppresses a leading
+`NO_ALERT` response; it must be installed before using this prompt unattended.
+Durable tracking of previously alerted listing IDs remains necessary to prevent
+repeated alerts. Automatic operation stays paused until that is implemented.
 
-1. Copy the complete contents of `PROFILE.json`.
-2. In **Settings → Profiles → Import Profile**, paste the JSON and import it.
-3. Choose **New Session from Profile → Marketplace monitor**. Customize the
-   search, location, radius, and WhatsApp group, then create the session.
-4. Choose a working AI provider/model, sign in to WhatsApp and Facebook in that
-   session, and verify access and the intended group yourself.
-5. Open **Actions → Review Setup**, review the prompt and the daily 9 AM schedule,
-   confirm the checklist, and choose **Enable Actions**. Times follow your Mac's
-   time zone. Enabling makes the Action eligible for future scheduled runs.
-6. **Run Now** is a live run and can post a verified new match. Reviewing setup
-   does not run the Action or send a message.
+## Install
 
-Import creates a Profile only. Session creation makes independent, disabled
-Actions with fresh IDs. The package contains no cookies, API keys, webhook
-secrets, or session IDs. Logins, runtime history, and Action edits stay local.
-This version uses WhatsApp Web and does not configure a webhook.
+1. Import [Marketplace-monitor.relprofile](Marketplace-monitor.relprofile) with
+   REL's Profile import command or file importer. The archive was exported by
+   installed REL 0.1.68 and contains no browser authentication or credentials.
+   [PROFILE.json](PROFILE.json) is the readable JSON transfer equivalent.
+2. In REL, choose **New → New Session from Profile → Marketplace monitor**.
+   Review the search, location, radius, and intended group inputs, then create.
+   If you imported under another name, select that name instead.
+3. Choose a working AI provider/model and sign in to Facebook in this session.
+4. In **Actions → Edit Action**, choose **Repeat every**, **30 minutes**, and
+   **Ends → Never**. Leave disabled while access and delivery are incomplete.
+5. Inspect **Review Setup**, then use **Run Now** for a one-time research check.
+   REL 0.1.69 requires the Action to be enabled for Run Now; PR #478 fixes this.
+   Selecting WhatsApp makes a successful run send its final response to the saved group.
 
-## Set up in REL
+Import creates a Profile only. Creating the session installs its Action with
+fresh IDs. Existing Action edits and run history are not transferred. REL must
+remain open and the Mac awake for enabled schedules; missed runs are skipped and
+runs do not overlap. No external scheduler, script runner, or browser-based
+WhatsApp automation is used.
 
-1. Open a persistent REL session and configure a working AI provider/model.
-2. Sign in to [WhatsApp Web](https://web.whatsapp.com) in that session and verify
-   that the intended group is named exactly **REL**. Facebook must also be
-   accessible in that session; sign in if required.
-3. Open the session's **Bottom Panel → Actions → Add Action**.
-4. Name the Action **Santa Cruz stroller wagon** and paste [ACTION.md](ACTION.md)
-   into **Step 1**.
-5. Set **When → Schedule**, select all seven days, and choose **9:00 AM**.
-6. Leave **Enabled** on, **Shortcut** and **Webhook** off, and **On Error → Stop**
-   under Advanced. Save.
-7. Use the Action's context menu → **Run Now** to validate its browser access and
-   group destination. This is a live action: it can post a verified new match.
+## Matching and comparisons
 
-This configuration was saved in local **Session2564** on September 16, 2026.
-The action list showed one daily action with its next run at **Thursday 9:00 AM**.
-The temporary half-hourly actions were removed. Session IDs are local; readers
-should create the action in their own persistent session.
+The [Action prompt](ACTION.md) limits inspection to 20 relevant listing links and
+two search-result scrolls. It excludes accessories, rentals, wanted ads, pet
+wagons, new goods, sold/pending items, and shipping-only offers. Detail-page
+location evidence must support the 10-mile radius; the search filter alone is
+insufficient. Uncertain locations are skipped.
 
-REL must remain running and the Mac awake at the scheduled time. The clock
-follows the Mac's time zone (America/Los_Angeles on this setup). Daily execution
-is intentional until native interval scheduling is available. This is not a
-cloud-hosted or always-on job.
+For eligible items, compare the exact brand/model with current in-stock retailer
+or manufacturer offers and up to three used Marketplace listings elsewhere in
+California. Include links, observation date, condition, accessories, dollar and
+percentage differences. Label broader model-family comparisons explicitly and
+leave unavailable comparisons unknown. The historical
+[Pronto comparison](PRICE-COMPARISON.md) is an example, not a current price feed.
 
-## What each run does
+## Installed-app verification: September 17, 2026
 
-The prompt first verifies WhatsApp access and an unambiguous group destination.
-It then searches Marketplace, inspecting up to 20 relevant listing links and
-two search-result scrolls. It requires a complete used child stroller wagon,
-availability and local collection, and credible detail-page location evidence.
-It skips accessories alone, rentals, new goods, sold/pending items and uncertain
-locations. Facebook can recommend distant listings despite the radius setting;
-the search filter alone is never treated as distance evidence.
+- Installed REL 0.1.68 reports build `rel-release-0.1.68-2f1cb731-1afa70c80055`.
+- Native WhatsApp Settings shows **Connected**, with **REL** saved as the group.
+- Supported RPC creation, binary export, and CLI import preserved the setup.
+- Creating a session from the imported **Santa Cruz stroller wagon** Profile
+  created **Session2565** and one disabled Action with correctly substituted
+  Santa Cruz, 10-mile, and REL inputs.
+- The Action editor saved **Repeat every: 30 minutes; Ends: Never**, disabled.
+- **Run Now** immediately displayed **Failed** before a chat response. Its cause
+  was not exposed in the observed Action UI; this is not a successful execution.
+- A separate native REL browser check reached Facebook's required login page in
+  Session2565. No listings were verified and no messages were sent.
 
-For an eligible item, REL researches its brand/model again on current retailer
-or manufacturer pages and up to three Marketplace listings elsewhere in
-California. Alerts include links, observation date, price differences and
-condition/accessory caveats. Unknown comparisons stay unknown. The historical
-[Pronto price comparison](PRICE-COMPARISON.md) is an example, not a price feed.
+Facebook sign-in, a successful full Action run, and native notification delivery
+still require validation. Local session IDs are evidence for this Mac only.
 
-Before posting, REL searches the group for the stable listing ID or URL, verifies
-the destination again, and checks the outgoing message afterward. It sends no
-WhatsApp message when there are no new matches. Login failures, unclear group
-identity or uncertain delivery stop the run and are reported in REL chat.
+## Retest on REL 0.1.69
 
-These checks are agent instructions, not deterministic database constraints.
-Group-history availability, model interpretation, map precision and website
-changes can limit matching and duplicate detection. When evidence is incomplete,
-the prompt tells the agent to stop or skip instead of guessing. It does not
-promise complete Marketplace coverage, exact pickup distances, or exactly-once
-delivery.
+Signed-in Marketplace access and native WhatsApp completion were verified on
+September 17. Run Now originally failed because the Action was disabled; the
+error popover exposed that cause. Enabling it allowed execution. A broad request
+hit the 24,000-token budget. Bounded single-listing research completed, but its
+first answer invented a date and rejected a usable wagon for lack of explicit
+seller confirmation. The prompt now avoids those unsupported requirements and
+limits browser calls and response size.
 
-## Operation
+The final native delivery validation used a researched alert: Santa Cruz Pronto
+at $500, an in-stock manufacturer Pronto One grey/white starter package at $850,
+and a used Pronto One in Eagle Rock/Los Angeles at $375. It states model, condition,
+and approximate-location caveats. REL reported Completed after native WhatsApp
+sending. This validates the send path using a supplied verified alert; the full
+automated research-to-delivery workflow is not yet validated unattended.
 
-Inspect the Action status and the session chat for results. Edit the same Action
-to change its time or criteria; disable it to pause. Preserve the session and its
-WhatsApp login. No local CLI authentication or phone number configuration is
-needed. A WhatsApp Cloud API webhook is not used for this existing consumer group.
-
-The checked-in artifacts are the Profile package, reusable prompt, and native
-setup instructions. Importing `PROFILE.json` and creating a session installs
-disabled Actions.
-Checking out this repository alone does not create or enable an Action.
-
-## Local validation
-
-A native **Run Now** validation on September 16, 2026 reached WhatsApp Web and
-reported that QR-code or phone-number login was required. It inspected no
-Facebook listings and sent no messages. The Action table displayed **Completed**
-because the agent finished reporting the blocker; that status does not mean an
-alert was delivered. Link WhatsApp in Session2564 before the next scheduled run.
-An end-to-end group alert has not yet been validated.
-
-The Profile package was validated in an isolated REL Debug build: Profile JSON
-import, binary archive export/import, customized radius substitution, and creation
-of a disabled session Action all passed. The setup review showed the daily 9 AM
-schedule and left activation disabled until checklist confirmation. This validates
-installation, not live Marketplace research or WhatsApp delivery.
+Session2565 retains the 30-minute configuration and native WhatsApp completion,
+but is disabled. The old daily WhatsApp Web Action in Session2564 is also disabled.
+Listing 1380767834231130 was added to the local prompt's already-alerted list.
+This manual record is not durable automatic deduplication.
