@@ -18,27 +18,33 @@ The [quiet-result fix](https://github.com/rel-me/rel/pull/478) suppresses a lead
 Durable tracking of previously alerted listing IDs remains necessary to prevent
 repeated alerts. Automatic operation stays paused until that is implemented.
 
-## Install
+## Install the reusable Action
 
-1. Import [Marketplace-monitor.relprofile](Marketplace-monitor.relprofile) with
-   REL's Profile import command or file importer. The archive was exported by
-   installed REL 0.1.68 and contains no browser authentication or credentials.
-   [PROFILE.json](PROFILE.json) is the readable JSON transfer equivalent.
-2. In REL, choose **New → New Session from Profile → Marketplace monitor**.
-   Review the search, location, radius, and intended group inputs, then create.
-   If you imported under another name, select that name instead.
-3. Choose a working AI provider/model and sign in to Facebook in this session.
-4. In **Actions → Edit Action**, choose **Repeat every**, **30 minutes**, and
+Requires a REL build with **Settings → Actions** and `rel.action` imports.
+
+1. Copy [ACTION.json](ACTION.json) into **Settings → Actions → Import Action**.
+   This adds reusable steps and inputs without creating a browser profile.
+2. Select the action and choose **Use Action**. Choose an existing session, or
+   create a new session using REL's default profile or a profile you select.
+   Existing sessions keep their current browser configuration.
+3. Review the search, location, radius, and intended group inputs. Choose
+   **Add Action**, configure an AI provider/model, and sign in to Facebook.
+4. Review the installed steps and access checklist. In the session's
+   **Actions → Edit Action**, choose **Repeat every**, **30 minutes**, and
    **Ends → Never**. Leave disabled while access and delivery are incomplete.
-5. Inspect **Review Setup**, then use **Run Now** for a one-time research check.
-   REL 0.1.69 requires the Action to be enabled for Run Now; PR #478 fixes this.
-   Selecting WhatsApp makes a successful run send its final response to the saved group.
+5. Use **Run Now** for a one-time research check. Selecting **When finished →
+   WhatsApp** makes a successful run send its final response to the saved group.
 
-Import creates a Profile only. Creating the session installs its Action with
-fresh IDs. Existing Action edits and run history are not transferred. REL must
-remain open and the Mac awake for enabled schedules; missed runs are skipped and
-runs do not overlap. No external scheduler, script runner, or browser-based
-WhatsApp automation is used.
+The library editor lets you choose an optional default profile and attach the
+same definition to existing profiles. New sessions created from those profiles
+receive disabled steps. Existing session edits and run history stay independent.
+REL must remain open and the Mac awake for enabled schedules; missed runs are
+skipped and runs do not overlap.
+
+[PROFILE.json](PROFILE.json) and
+[Marketplace-monitor.relprofile](Marketplace-monitor.relprofile) are historical
+REL 0.1.68 profile packages. They remain available for reproducing the verification
+below; use ACTION.json for the current Action import flow.
 
 ## Matching and comparisons
 
