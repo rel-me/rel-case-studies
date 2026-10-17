@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "python3 -m unittest discover -s tests && node --test tests/*.test.mjs",
+    "test": "${PYTHON:-python3} -m unittest discover -s tests && node --test tests/*.test.mjs",
     "dev": "wrangler dev --port 8790",
     "deploy": "npm test && wrangler deploy"
   },
