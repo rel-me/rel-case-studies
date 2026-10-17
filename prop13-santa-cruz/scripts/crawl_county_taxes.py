@@ -287,6 +287,17 @@ def summary(db):
             'last_capture': db.execute('SELECT max(captured_at) FROM captures').fetchone()[0]}
 
 
+def seed_county_targets(db,path):
+    if not path: return
+    source=sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True)
+    if not source.execute("SELECT 1 FROM inventory_state WHERE key='complete'").fetchone():
+        raise ValueError('County inventory is incomplete; finish inventory before expanding the tax queue')
+    with db:
+        for apn,address in source.execute('SELECT apn,address FROM parcels WHERE residential=1 ORDER BY address'):
+            db.execute('INSERT OR IGNORE INTO targets(apn,zpid,address) VALUES(?,?,?)',(normalize_apn(apn),'',address))
+    source.close()
+
+
 def import_priority_parcels(db,path):
     """Explicit county-sourced additions may lack a third-party estimate."""
     if not path: return []
@@ -474,6 +485,7 @@ def main():
     parser.add_argument('--rate',default=6,type=int,help='Parcel lookups per minute, serially')
     parser.add_argument('--summary',action='store_true')
     parser.add_argument('--priority-file',type=Path,help='County-sourced JSON parcels to add and move ahead of the saved queue')
+    parser.add_argument('--county-inventory',type=Path,help='Completed county parcel inventory; adds residential targets without requiring estimates')
     parser.add_argument('--repair-format-parcel',help='Explicitly reprocess one known installment-format failure after a parser repair')
     args = parser.parse_args()
     if not 1<=args.rate<=10 or args.max_properties<1: parser.error('rate must be 1–10 and max-properties positive')
@@ -487,6 +499,7 @@ def main():
             if args.summary: print(json.dumps(summary(db),indent=2));return 0
             prepare_full_capture(db)
             seed_targets(db,args.inventory)
+            seed_county_targets(db,args.county_inventory)
             return asyncio.run(crawl(args,db))
         finally: db.close()
 

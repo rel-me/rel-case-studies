@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Santa Cruz property taxes</title>
-  <meta name="description" content="Santa Cruz property records: reported annual taxes, assessed values and third-party home-value estimates.">
+  <title>Santa Cruz County property taxes</title>
+  <meta name="description" content="Santa Cruz County property records: reported annual taxes, assessed values and third-party home-value estimates.">
   <link rel="canonical" href="https://rel.me/case-studies/prop13-santa-cruz">
-  <meta property="og:title" content="Santa Cruz property taxes">
+  <meta property="og:title" content="Santa Cruz County property taxes">
   <meta property="og:description" content="An open-data study of property taxes, assessed values and estimated home values in Santa Cruz.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rel.me/case-studies/prop13-santa-cruz">
@@ -18,20 +18,20 @@
   <a href="#explore" class="skip">Skip to the data</a>
   <main class="wrap">
     <header class="page-header">
-      <h1>Santa Cruz property taxes</h1>
-      <p>Compare reported annual property taxes and assessed values with third-party home-value estimates.</p>
+      <h1>Santa Cruz County property taxes</h1>
+      <p>County property taxes, assessed values, and third-party home-value estimates. Filter by Santa Cruz city limits or the rest of the county.</p>
       <p class="coverage-line"><span id="estimate-count">…</span> estimates · <span id="assessment-count">…</span> assessments · <span id="tax-count">…</span> annual tax records · Snapshot <span id="snapshot">…</span></p>
       <div class="links"><a href="/case-studies/prop13-santa-cruz/data.csv" download>Download CSV</a><a href="#methods">Methods and sources</a></div>
     </header>
     <div id="load-error" class="error" role="alert" hidden>Data could not be loaded. Refresh or <a href="/case-studies/prop13-santa-cruz/data.csv">download the CSV</a>.</div>
     <section id="explore" aria-label="Property records">
-      <div class="tabs" role="tablist" aria-label="Comparison"><button role="tab" id="tax-tab" aria-selected="true" aria-controls="data-panel" data-mode="tax">Reported annual tax <span id="tax-tab-count"></span></button><button role="tab" id="assessment-tab" aria-selected="false" aria-controls="data-panel" data-mode="assessment" tabindex="-1">Assessed value <span id="assessment-tab-count"></span></button></div>
-      <div id="data-panel" role="tabpanel" aria-labelledby="tax-tab"><p id="mode-note" class="mode-note"></p><div class="controls"><label class="search-label"><span class="sr-only">Search address, city or ZIP code</span><input id="search" type="search" placeholder="Search address or ZIP code" autocomplete="off"></label><label><span class="sr-only">Property type</span><select id="home-type"><option value="">All property types</option></select></label><label><span class="sr-only">Sort records</span><select id="sort"></select></label></div><div class="table-meta"><p id="result-count" role="status" aria-live="polite">Loading records…</p><button id="download-view" class="text-button">Download filtered CSV ↓</button></div><div class="table-scroll"><table><caption class="sr-only" id="table-caption">Property comparisons</caption><thead><tr><th scope="col">Rank / Property</th><th scope="col" class="numeric">Estimated value</th><th scope="col" class="numeric" id="amount-heading">Annual tax</th><th scope="col" class="numeric" id="ratio-heading">Tax / estimate</th><th scope="col" class="numeric" id="gap-heading">Gap to 1% benchmark</th></tr></thead><tbody id="records"></tbody></table></div><div id="empty" class="empty" hidden>No matching properties. Try a different address or property type.</div><div class="pagination"><span id="page-label"></span><div><button id="previous" disabled>← Previous</button><button id="next" disabled>Next →</button></div></div></div>
+      <div class="tabs" role="tablist" aria-label="Comparison"><button role="tab" id="tax-tab" aria-selected="true" aria-controls="data-panel" data-mode="tax">Annual tax <span id="tax-tab-count"></span></button><button role="tab" id="assessment-tab" aria-selected="false" aria-controls="data-panel" data-mode="assessment" tabindex="-1">Assessed value <span id="assessment-tab-count"></span></button></div>
+      <div id="data-panel" role="tabpanel" aria-labelledby="tax-tab"><p id="mode-note" class="mode-note"></p><div class="controls"><label class="search-label"><span class="sr-only">Search address, city or ZIP code</span><input id="search" type="search" placeholder="Search address or ZIP code" autocomplete="off"></label><label><span class="sr-only">Location</span><select id="location"><option value="">All Santa Cruz County</option><option value="city">Santa Cruz city limits</option><option value="outside">Outside Santa Cruz city</option><option value="unknown">Boundary unknown</option></select></label><label><span class="sr-only">Property type</span><select id="home-type"><option value="">All property types</option></select></label><label><span class="sr-only">Sort records</span><select id="sort"></select></label></div><div class="table-meta"><p id="result-count" role="status" aria-live="polite">Loading records…</p><button id="download-view" class="text-button">Download filtered CSV ↓</button></div><div class="table-scroll"><table><caption class="sr-only" id="table-caption">Property comparisons</caption><thead><tr><th scope="col">Rank / Property</th><th scope="col" class="numeric">Estimated value</th><th scope="col" class="numeric" id="amount-heading">Annual tax</th><th scope="col" class="numeric" id="ratio-heading">Tax / estimate</th><th scope="col" class="numeric" id="gap-heading">Gap to 1% benchmark</th></tr></thead><tbody id="records"></tbody></table></div><div id="empty" class="empty" hidden>No matching properties. Try a different address, location, or property type.</div><div class="pagination"><span id="page-label"></span><div><button id="previous" disabled>← Previous</button><button id="next" disabled>Next →</button></div></div></div>
     </section>
     <section class="chart-section" aria-labelledby="tax-title">
       <h2 id="tax-title">Annual tax comparisons</h2>
       <p>Ten properties with the largest difference between reported annual tax and 1% of estimated value. This reference is not an amount owed.</p>
-      <div class="legend"><span><i class="reported"></i>Reported annual tax</span><span><i class="benchmark"></i>1% of estimated value</span></div>
+      <div class="legend"><span><i class="reported"></i>Annual tax</span><span><i class="benchmark"></i>1% of estimated value</span></div>
       <div id="tax-chart" class="tax-chart" aria-label="Largest annual tax benchmark gaps"></div>
       <p class="caption" id="tax-chart-note"></p>
     </section>
@@ -44,7 +44,8 @@
       <summary>Methods and sources</summary>
       <div class="method-content">
         <p id="coverage-detail"></p><p id="coverage-outcomes"></p>
-        <p><strong>Sources.</strong> Estimates, assessments and annual tax-history amounts in this snapshot come from a third-party property website. Tax amounts have not been independently verified with the county and do not establish payment. County bill collection is in progress. The address inventory comes from Santa Cruz County parcel records.</p>
+        <p><strong>Sources.</strong> Estimates come from a third-party property website. Assessment and tax sources are listed in each property record. County-sourced records are labeled individually and show amounts billed separately from recorded payments. Other tax amounts come from the third-party website and do not establish payment. County collection is in progress. The address inventory comes from Santa Cruz County parcel records.</p>
+        <p><strong>Geography.</strong> City-limit flags use the county parcel boundary field, or the original city GIS flag where the county match is unavailable. Mailing-city names do not establish jurisdiction. Outside Santa Cruz city includes other municipalities and unincorporated areas. County inventory coverage is broader than completed tax and estimate collection.</p>
         <p><strong>Calculations.</strong> Assessment difference = estimated value minus assessed value. Annual tax difference = 1% of estimated value minus reported annual tax. Ratios divide the reported assessment or tax by the estimate. The 1% reference excludes local debt, fixed charges, exemptions and supplemental assessments.</p>
         <p><strong>Limitations.</strong> Estimates are not appraisals. Tax years and estimate dates can differ; assessment years are often unavailable. Missing values are excluded, not estimated. Address matching, duplicate units and multi-parcel properties can affect comparisons. The tax subset is not a random sample. Differences cannot be attributed entirely to Proposition 13.</p>
         <p><strong>Proposition 13.</strong> California generally limits annual assessed-value growth to no more than 2%, with reassessment commonly triggered by a change in ownership or new construction. Individual acquisition histories are not established by this dataset.</p>
@@ -52,6 +53,6 @@
       </div>
     </details>
   </main>
-  <dialog id="detail"><div class="dialog-top"><button id="close-detail" aria-label="Close property details">Close ×</button></div><h2 id="detail-title"></h2><p id="detail-subtitle"></p><dl id="detail-fields"></dl><p class="detail-note">Reported by a third-party property website. Tax and estimate dates may differ. A benchmark difference is not unpaid tax or an amount owed.</p></dialog>
+  <dialog id="detail"><div class="dialog-top"><button id="close-detail" aria-label="Close property details">Close ×</button></div><h2 id="detail-title"></h2><p id="detail-subtitle"></p><dl id="detail-fields"></dl><p class="detail-note">Sources and dates are listed for each value. Tax and estimate dates may differ. A benchmark difference is not unpaid tax or an amount owed.</p></dialog>
 </body>
 </html>

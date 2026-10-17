@@ -131,8 +131,6 @@ class FullCaptureTests(unittest.TestCase):
             db.close()
 
 
-if __name__=='__main__': unittest.main()
-
 class PriorityParcelTests(unittest.TestCase):
     def test_explicit_county_import_prioritizes_without_resetting_terminal_states(self):
         import json
@@ -147,3 +145,26 @@ class PriorityParcelTests(unittest.TestCase):
             self.assertEqual(db.execute("SELECT status FROM targets WHERE apn='02625202'").fetchone()[0],'blocked')
             self.assertEqual(db.execute('SELECT count(*) FROM targets').fetchone()[0],2)
             db.close()
+
+class CountyInventoryTests(unittest.TestCase):
+    def test_boundary_uses_county_field_instead_of_postal_city(self):
+        import json
+        inventory_path=path.with_name('crawl_county_inventory.py');spec=importlib.util.spec_from_file_location('inventory',inventory_path)
+        inventory=importlib.util.module_from_spec(spec);spec.loader.exec_module(inventory)
+        with tempfile.TemporaryDirectory() as directory:
+            p=Path(directory)/'inventory.sqlite3';db=inventory.initialize(p)
+            features=[{'attributes':{'OBJECTID':1,'APNNODASH':'02625202','SITEADD':'1215 DOUGMAR DR','SITCITY':'SANTA CRUZ','SITZIP':'95062','ASRUSECD':'020','USECDDESC':'SINGLE RESIDENCE','CITYLIMITS':'n/a'}},
+                {'attributes':{'OBJECTID':2,'APNNODASH':'00114135','SITEADD':'530 HIGH ST','SITCITY':'SANTA CRUZ','SITZIP':'95060','ASRUSECD':'020','USECDDESC':'SINGLE RESIDENCE','CITYLIMITS':'City of Santa Cruz'}}]
+            html='<pre>'+json.dumps({'features':features})+'</pre>'
+            inventory.save_batch(db,0,inventory.SOURCE,html,[1,2])
+            self.assertEqual(db.execute('SELECT in_santa_cruz_city FROM parcels ORDER BY object_id').fetchall(),[(0,),(1,)])
+            target=county.init_database(Path(directory)/'tax.sqlite3')
+            with self.assertRaisesRegex(ValueError,'incomplete'): county.seed_county_targets(target,p)
+            with db: db.execute("INSERT INTO inventory_state VALUES('complete','1')")
+            county.seed_county_targets(target,p)
+            self.assertEqual(target.execute('SELECT count(*) FROM targets').fetchone()[0],2)
+            with self.assertRaisesRegex(ValueError,'IDs'): inventory.save_batch(db,1,inventory.SOURCE,html,[1,3])
+            target.close();db.close()
+
+
+if __name__=='__main__': unittest.main()

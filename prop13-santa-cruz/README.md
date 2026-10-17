@@ -141,3 +141,39 @@ layer. These additions may lack estimates and are recorded separately in
 Unfinished priority parcels move ahead of the saved queue. Completed records
 and terminal failures are preserved. Stop the current worker gracefully and
 wait for `run.lock` to release before restarting with the priority file.
+
+## County coverage and city boundaries
+
+`crawl_county_inventory.py` captures the full official county parcel layer in
+validated object-ID batches through a separate Native REL session/queue. It
+stores only address, parcel-use and boundary fields, with raw response HTML,
+in `county-inventory.sqlite3`. It does not collect owner fields. Obtain the
+layer's `returnIdsOnly=true` response through REL, save its rendered HTML, then:
+
+```sh
+python scripts/crawl_county_inventory.py --output /private/output --ids-html /private/output/county-inventory-ids.html
+```
+
+A complete inventory is required before adding county tax targets using
+`crawl_county_taxes.py --county-inventory /private/output/county-inventory.sqlite3`.
+This adds addressed parcels with the explicit residential use codes listed in
+the inventory collector. Other/unknown use codes remain in the private inventory
+for review; a parcel inventory is not a census of individual homes or units.
+County additions do not require an existing third-party estimate. Existing tax
+checkpoints and terminal failures are retained; Dougmar priority stays first.
+Set `--max-properties` appropriately for the larger queue.
+
+The public export accepts `--county-inventory` and `--county-taxes`. It uses the
+county `CITYLIMITS` spatial field, falling back to the original GIS `SCCityLMT`
+flag for existing matches. It never derives jurisdiction from postal city.
+`in_santa_cruz_city` distinguishes Santa Cruz city from all other county areas;
+`municipality` retains other incorporated cities. The county’s `n/a` boundary value denotes unincorporated areas; blank boundary
+values remain unknown. Unmatched or
+conflicting boundaries remain unknown. The public location filter supports all
+county records, Santa Cruz city limits, outside Santa Cruz city, and unknown.
+
+Verified county annual bills prefer fiscal 2025–26 and retain billed and recorded
+paid amounts separately. County-only records can be searched without an estimate;
+comparisons remain blank until an estimate exists. The export does not publish
+raw pages, temporary bill-link IDs, parcel IDs or owner fields. Inventory and tax
+collection coverage are reported separately from estimate coverage.
