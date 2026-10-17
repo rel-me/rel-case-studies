@@ -287,6 +287,25 @@ def summary(db):
             'last_capture': db.execute('SELECT max(captured_at) FROM captures').fetchone()[0]}
 
 
+def import_priority_parcels(db,path):
+    """Explicit county-sourced additions may lack a third-party estimate."""
+    if not path: return []
+    data=json.loads(path.read_text())
+    source=data['source']
+    if source!='https://sccgis.santacruzcountyca.gov/server/rest/services/giswebp/MapServer/25':
+        raise ValueError('Priority parcel imports require the official county parcel layer')
+    parcels=[(normalize_apn(row['apn']),row['address'].strip()) for row in data['parcels']]
+    if any(not address for _,address in parcels) or len({apn for apn,_ in parcels})!=len(parcels):
+        raise ValueError('Priority parcel import has missing addresses or duplicate APNs')
+    with db:
+        db.execute('CREATE TABLE IF NOT EXISTS priority_parcels(apn TEXT PRIMARY KEY,source_url TEXT,imported_at TEXT)')
+        for apn,address in parcels:
+            db.execute('INSERT OR IGNORE INTO targets(apn,zpid,address) VALUES(?,?,?)',(apn,'',address))
+            db.execute('INSERT OR IGNORE INTO priority_parcels VALUES(?,?,?)',(apn,source,datetime.now(timezone.utc).isoformat()))
+    return [apn for apn,address in sorted(parcels,key=lambda row:(int(re.match(r'\d+',row[1])[0]) if re.match(r'\d+',row[1]) else 0,row[1]))
+            if db.execute('SELECT status FROM targets WHERE apn=?',(apn,)).fetchone()[0] in ('pending','running','history_complete')]
+
+
 async def crawl(args, db):
     # Imports stay here so parser tests do not require the browser dependencies.
     from crawlee import ConcurrencySettings, Request
@@ -424,6 +443,14 @@ async def crawl(args, db):
 
     seeds = [Request.from_url(SEARCH, unique_key='county-tax-full-v1:'+row['apn'],user_data={'apn':row['apn']})
              for row in db.execute("SELECT apn FROM targets WHERE status IN ('pending','running','history_complete') ORDER BY address")]
+    for apn in reversed(import_priority_parcels(db,args.priority_file)):
+        key='county-tax-full-v1:'+apn
+        existing=await queue.get_request(key)
+        if existing is not None:
+            if existing.handled_at is None: await queue.reclaim_request(existing,forefront=True)
+        else:
+            await queue.add_requests([Request.from_url(SEARCH,unique_key=key,user_data={'apn':apn})],forefront=True,
+                                     wait_for_all_requests_to_be_added=True)
     if args.repair_format_parcel:
         apn=normalize_apn(args.repair_format_parcel)
         row=db.execute('SELECT status,error FROM targets WHERE apn=?',(apn,)).fetchone()
@@ -446,6 +473,7 @@ def main():
     parser.add_argument('--max-properties',default=12000,type=int)
     parser.add_argument('--rate',default=6,type=int,help='Parcel lookups per minute, serially')
     parser.add_argument('--summary',action='store_true')
+    parser.add_argument('--priority-file',type=Path,help='County-sourced JSON parcels to add and move ahead of the saved queue')
     parser.add_argument('--repair-format-parcel',help='Explicitly reprocess one known installment-format failure after a parser repair')
     args = parser.parse_args()
     if not 1<=args.rate<=10 or args.max_properties<1: parser.error('rate must be 1–10 and max-properties positive')

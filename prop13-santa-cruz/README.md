@@ -131,3 +131,13 @@ python scripts/query_county_taxes.py --database /private/output/county-tax.sqlit
 The results include capture IDs, full detail text, history capture time and
 installment records. HTML export refuses to overwrite an existing file. This
 lookup tooling and raw data are not served by the public Cloudflare Worker.
+
+To prioritize an explicitly requested street outside the original city inventory,
+pass `--priority-file /private/output/street-priority.json`. The JSON contains
+`source` (the official county parcel-layer URL above) and `parcels`, an array of
+`{ "apn": "02625202", "address": "1215 DOUGMAR DR" }` records captured from that
+layer. These additions may lack estimates and are recorded separately in
+`priority_parcels`; they must not be counted as estimate-backed comparisons.
+Unfinished priority parcels move ahead of the saved queue. Completed records
+and terminal failures are preserved. Stop the current worker gracefully and
+wait for `run.lock` to release before restarting with the priority file.

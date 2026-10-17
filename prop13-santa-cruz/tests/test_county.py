@@ -132,3 +132,18 @@ class FullCaptureTests(unittest.TestCase):
 
 
 if __name__=='__main__': unittest.main()
+
+class PriorityParcelTests(unittest.TestCase):
+    def test_explicit_county_import_prioritizes_without_resetting_terminal_states(self):
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            db=county.init_database(Path(directory)/'test.sqlite3')
+            path=Path(directory)/'priority.json'
+            path.write_text(json.dumps({'source':'https://sccgis.santacruzcountyca.gov/server/rest/services/giswebp/MapServer/25','parcels':[
+                {'apn':'026-252-03','address':'1225 DOUGMAR DR'}, {'apn':'026-252-02','address':'1215 DOUGMAR DR'}]}))
+            self.assertEqual(county.import_priority_parcels(db,path),['02625202','02625203'])
+            with db: db.execute("UPDATE targets SET status='blocked' WHERE apn='02625202'")
+            self.assertEqual(county.import_priority_parcels(db,path),['02625203'])
+            self.assertEqual(db.execute("SELECT status FROM targets WHERE apn='02625202'").fetchone()[0],'blocked')
+            self.assertEqual(db.execute('SELECT count(*) FROM targets').fetchone()[0],2)
+            db.close()
