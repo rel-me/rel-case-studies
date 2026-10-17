@@ -84,6 +84,17 @@ class FullCaptureTests(unittest.TestCase):
         self.assertEqual(entries[1]['installments'][0]['payment_status'],'paid')
         self.assertEqual(len(entries[0]['installments']),2)
 
+    def test_defaulted_bill_is_preserved_without_discarding_other_years(self):
+        html=bill(2025,'Past Due').replace('$4,233.72','Defaulted')
+        entries=county.list_all_bills(html,'00912326')
+        self.assertEqual(entries[0]['unpaid_installments'],2)
+        self.assertEqual(entries[0]['installments'][0]['amount_text'],'Defaulted')
+        issues=[]
+        header='<table class="paddedtable"><tr><td>Parcel/Account # 009-123-26</td></tr></table>'
+        parsed=county.parse_bills(header+html+bill(2026,'Not Paid'),'00912326',issues)
+        self.assertEqual(len(parsed),1)
+        self.assertEqual(issues[0]['fiscal_start'],2025)
+
     def test_rejects_payment_and_external_urls(self):
         for url in ['https://ttc.co.santa-cruz.ca.us/Taxbills/Pay?TaxBillID=1&RevObjID=2',
                     'https://example.com/Taxbills/TaxBillDetails?TaxBillID=1&RevObjID=2',

@@ -105,7 +105,7 @@ def list_all_bills(html,apn):
         for row in rows:
             if len(row)==4 and re.search(r'Installment',row[0],re.I) and row[0].strip() not in ('Installment','Both Installment'):
                 installments.append({'label':row[0],'due_date_text':row[1],'paid_date_text':row[2],'amount_text':row[3],
-                    'payment_status':'unpaid' if row[2]=='Not Paid' else 'paid' if re.fullmatch(r'\d{1,2}/\d{1,2}/\d{4}',row[2]) else 'unknown'})
+                    'payment_status':'unpaid' if row[2] in ('Not Paid','Past Due') else 'paid' if re.fullmatch(r'\d{1,2}/\d{1,2}/\d{4}',row[2]) else 'unknown'})
         identity=[apn,title,[(i['label'],i['due_date_text']) for i in installments]]
         key=hashlib.sha256(json.dumps(identity).encode()).hexdigest()[:24]
         occurrences[key]+=1;key+=':'+str(occurrences[key])
@@ -168,37 +168,41 @@ def parse_bills(html, expected_apn, issues=None):
         year = re.fullmatch(r'(\d{4})\s*-\s*(\d{4})\s+Annual Tax Bill', title)
         if not year or int(year[2]) != int(year[1]) + 1:
             continue  # Supplemental/default/escape bills are not annual bills.
-        installments = []
-        for row in table.css('tr'):
-            cells = row.css('td')
-            if len(cells) != 4:
-                continue
-            label = ' '.join(cells[0].text(separator=' ', strip=True).split())
-            if label not in ('First Installment', 'Second Installment'):
-                continue
-            due = cells[1].text(strip=True)
-            paid = cells[2].text(strip=True)
-            paid_date = None
-            if paid != 'Not Paid':
-                paid_date = datetime.strptime(paid, '%m/%d/%Y').date().isoformat()
-            installments.append({'installment': label, 'due_date': datetime.strptime(due, '%m/%d/%Y').date().isoformat(),
-                                 'paid_date': paid_date, 'amount': str(amount(cells[3].text(strip=True)))})
-        if {v['installment'] for v in installments} != {'First Installment','Second Installment'} or len(installments) != 2:
-            if issues is not None:
-                issues.append({'fiscal_start':int(year[1]),'reason':'Annual bill does not contain exactly two identified installments'})
-                continue
-            raise ValueError('Annual bill does not contain exactly two identified installments')
-        link = table.css_first('a[href]')
-        details_url = urljoin(SITE, link.attributes['href']) if link else None
-        if details_url and (urlsplit(details_url).hostname != urlsplit(SITE).hostname
-                            or urlsplit(details_url).path != '/Taxbills/TaxBillDetails'):
-            raise ValueError('Unexpected bill-detail URL')
-        total = sum((Decimal(v['amount']) for v in installments), Decimal(0))
-        paid_total = sum((Decimal(v['amount']) for v in installments if v['paid_date']), Decimal(0))
-        bills.append({'fiscal_start': int(year[1]), 'fiscal_end': int(year[2]),
-                      'total_billed': str(total), 'amount_paid': str(paid_total),
-                      'fully_paid': all(v['paid_date'] for v in installments),
-                      'installments': installments, 'details_url': details_url})
+        try:
+            installments = []
+            for row in table.css('tr'):
+                cells = row.css('td')
+                if len(cells) != 4:
+                    continue
+                label = ' '.join(cells[0].text(separator=' ', strip=True).split())
+                if label not in ('First Installment', 'Second Installment'):
+                    continue
+                due = cells[1].text(strip=True)
+                paid = cells[2].text(strip=True)
+                paid_date = None
+                if paid != 'Not Paid':
+                    paid_date = datetime.strptime(paid, '%m/%d/%Y').date().isoformat()
+                installments.append({'installment': label, 'due_date': datetime.strptime(due, '%m/%d/%Y').date().isoformat(),
+                                     'paid_date': paid_date, 'amount': str(amount(cells[3].text(strip=True)))})
+            if {v['installment'] for v in installments} != {'First Installment','Second Installment'} or len(installments) != 2:
+                if issues is not None:
+                    issues.append({'fiscal_start':int(year[1]),'reason':'Annual bill does not contain exactly two identified installments'})
+                    continue
+                raise ValueError('Annual bill does not contain exactly two identified installments')
+            link = table.css_first('a[href]')
+            details_url = urljoin(SITE, link.attributes['href']) if link else None
+            if details_url and (urlsplit(details_url).hostname != urlsplit(SITE).hostname
+                                or urlsplit(details_url).path != '/Taxbills/TaxBillDetails'):
+                raise ValueError('Unexpected bill-detail URL')
+            total = sum((Decimal(v['amount']) for v in installments), Decimal(0))
+            paid_total = sum((Decimal(v['amount']) for v in installments if v['paid_date']), Decimal(0))
+            bills.append({'fiscal_start': int(year[1]), 'fiscal_end': int(year[2]),
+                          'total_billed': str(total), 'amount_paid': str(paid_total),
+                          'fully_paid': all(v['paid_date'] for v in installments),
+                          'installments': installments, 'details_url': details_url})
+        except ValueError as error:
+            if issues is None: raise
+            issues.append({'fiscal_start':int(year[1]),'reason':str(error)})
     duplicates={year for year,count in Counter(b['fiscal_start'] for b in bills).items() if count>1}
     if duplicates:
         if issues is None: raise ValueError('Multiple complete annual bills for the same fiscal year')
