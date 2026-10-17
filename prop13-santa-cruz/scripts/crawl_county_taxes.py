@@ -25,13 +25,13 @@ SEARCH = SITE + '/TaxBills/'
 
 
 async def ensure_session(args):
-    """Manage only this collector's persistent Native session via loopback RPC."""
+    """Manage only this collector's persistent configured session via loopback RPC."""
     endpoint=urlsplit(args.base_url)
     if endpoint.scheme!='http' or endpoint.hostname not in ('127.0.0.1','localhost','::1'):
         raise ValueError('REL management requires a loopback endpoint')
-    path=args.output/'county-session.json'
+    path=args.session_file
     state=json.loads(path.read_text()) if path.exists() else {}
-    if state and (state.get('profile')!='Native' or state.get('base_url')!=args.base_url or state.get('group')!='prop13-county-taxes'):
+    if state and (state.get('profile')!=args.profile or state.get('base_url')!=args.base_url or state.get('group')!='prop13-county-taxes'):
         raise ValueError('County session belongs to another profile, group or endpoint')
     async def rpc(method,suffix,payload=None):
         def send():
@@ -45,13 +45,13 @@ async def ensure_session(args):
         reply=await rpc('GET','/sessions/'+quote(state['session_id'],safe=''))
         if reply.get('status')=='ok':
             session=reply['data']['session']
-            if session.get('profile')!='Native' or session.get('group')!='prop13-county-taxes':
+            if session.get('profile')!=args.profile or session.get('group')!='prop13-county-taxes':
                 raise ValueError('Refusing to use a session outside the county collector group')
             return state['session_id']
         if reply.get('error',{}).get('id')!='SESSION_NOT_FOUND': raise RuntimeError(str(reply.get('error')))
-    reply=await rpc('POST','/sessions',{'profile':'Native','group':'prop13-county-taxes','lifetime':{'type':'indefinite'}})
+    reply=await rpc('POST','/sessions',{'profile':args.profile,'group':'prop13-county-taxes','lifetime':{'type':'indefinite'}})
     if reply.get('status')!='ok': raise RuntimeError(str(reply.get('error')))
-    state={'profile':'Native','group':'prop13-county-taxes','base_url':args.base_url,'session_id':reply['data']['session']['id']}
+    state={'profile':args.profile,'group':'prop13-county-taxes','base_url':args.base_url,'session_id':reply['data']['session']['id']}
     temporary=path.with_suffix('.tmp');temporary.write_text(json.dumps(state,indent=2)+'\n');temporary.replace(path)
     return state['session_id']
 
@@ -470,7 +470,7 @@ async def crawl(args, db):
             # Never retries access denials or erases the previous error record.
             await queue.add_requests([Request.from_url(SEARCH,unique_key='county-tax-format-v2:'+apn,user_data={'apn':apn})],
                                      forefront=True,wait_for_all_requests_to_be_added=True)
-    print(json.dumps({'session':session,'profile':'Native','source':SEARCH,'resume':summary(db)}),flush=True)
+    print(json.dumps({'session':session,'profile':args.profile,'source':SEARCH,'resume':summary(db)}),flush=True)
     stats = await crawler.run(seeds,purge_request_queue=False)
     print(json.dumps({'finished':stats.requests_finished,'failed':stats.requests_failed,**summary(db)}),flush=True)
     return 2 if stats.requests_failed else 0
@@ -481,6 +481,9 @@ def main():
     parser.add_argument('--inventory',required=True,type=Path)
     parser.add_argument('--output',required=True,type=Path)
     parser.add_argument('--base-url',default='http://127.0.0.1:17319/v1')
+    parser.add_argument('--profile',choices=('Native','Datacenter'),default='Native',
+                        help='REL browser profile; Datacenter explicitly uses the configured datacenter proxy')
+    parser.add_argument('--session-file',type=Path,help='Persistent session state file (kept separate per profile)')
     parser.add_argument('--max-properties',default=12000,type=int)
     parser.add_argument('--rate',default=6,type=int,help='Parcel lookups per minute, serially')
     parser.add_argument('--summary',action='store_true')
@@ -488,6 +491,8 @@ def main():
     parser.add_argument('--county-inventory',type=Path,help='Completed county parcel inventory; adds residential targets without requiring estimates')
     parser.add_argument('--repair-format-parcel',help='Explicitly reprocess one known installment-format failure after a parser repair')
     args = parser.parse_args()
+    if args.session_file is None:
+        args.session_file=args.output/('county-session-datacenter.json' if args.profile=='Datacenter' else 'county-session.json')
     if not 1<=args.rate<=10 or args.max_properties<1: parser.error('rate must be 1–10 and max-properties positive')
     args.output.mkdir(parents=True,exist_ok=True)
     with (args.output/'run.lock').open('a') as lock:
