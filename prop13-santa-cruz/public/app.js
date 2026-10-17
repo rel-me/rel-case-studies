@@ -66,30 +66,9 @@ function openRecord(r) {
   $('detail').showModal();
 }
 
-function renderPair() {
-  const pair=choosePair(data.records);
-  const target=$('paired-homes'); target.replaceChildren();
-  if(!pair) { target.append(element('p','No two properties in the annual-tax sample meet the comparison criteria.','caption')); return; }
-  const maximum=Math.max(...pair.map(r=>r.annual_tax));
-  for(const r of pair) {
-    const home=element('div',null,'pair-home');
-    home.append(element('p',r.address,'pair-address'),element('p',`${label(r.home_type)} · ${r.postal_code || 'Santa Cruz'}`,'pair-meta'));
-    const amounts=element('div',null,'pair-numbers');
-    const estimate=element('div'), tax=element('div');
-    estimate.append(element('strong',money(r.estimated_value)),element('span','Third-party value estimate'));
-    tax.append(element('strong',money(r.annual_tax),'tax-number'),element('span',`Reported tax · ${r.tax_year}`));
-    amounts.append(estimate,tax); home.append(amounts);
-    const bar=element('div',null,'pair-bar'),fill=element('span'); fill.style.width=`${r.annual_tax/maximum*100}%`; bar.append(fill); home.append(bar);target.append(home);
-  }
-  target.append(element('p',`${(pair[1].annual_tax/pair[0].annual_tax).toFixed(1)}× the reported annual tax`,'pair-summary'));
-  $('pair-note').textContent=`Both are ${label(pair[0].home_type).toLowerCase()} properties; their value estimates differ by less than 15%. Estimates captured ${date(pair[0].estimate_captured_at)} and ${date(pair[1].estimate_captured_at)}. This is a selected contrast, not a matched causal comparison.`;
-}
-
 function renderDistribution() {
   const rows=data.records.filter(r=>r.assessment_ratio!=null), bins=histogram(rows);
   const below=rows.filter(r=>r.assessment_ratio<.5).length;
-  $('below-half').textContent=share(below/rows.length);
-  $('below-half-caption').textContent=`${number.format(below)} of ${number.format(rows.length)} homes with both measures have an assessment below half of the estimated value.`;
   const max=Math.max(...bins,1), w=600,h=300,left=45,right=15,top=28,bottom=40,plotW=w-left-right,plotH=h-top-bottom;
   const chart=svg('svg',{viewBox:`0 0 ${w} ${h}`,'aria-hidden':'true'});
   for(let i=0;i<=4;i++) {
@@ -99,7 +78,7 @@ function renderDistribution() {
   }
   bins.forEach((count,i)=>{
     const bh=count/max*plotH,x=left+i*plotW/16;
-    const bar=svg('rect',{x:x+2,y:top+plotH-bh,width:plotW/16-4,height:bh,fill:i<5?'#a74932':'#294b43'});
+    const bar=svg('rect',{x:x+2,y:top+plotH-bh,width:plotW/16-4,height:bh,fill:'#61788b'});
     bar.append(svg('title',{},`${i===15?'150% and above':`${i*10}–${(i+1)*10}%`}: ${number.format(count)} homes`));chart.append(bar);
   });
   const reference=left+10*plotW/16;
@@ -109,7 +88,7 @@ function renderDistribution() {
   $('distribution').replaceChildren(chart);
   $('distribution').setAttribute('aria-label',`${number.format(rows.length)} properties grouped by assessed value divided by estimated value. ${number.format(below)} (${share(below/rows.length)}) are assessed below half the estimate. The rightmost bar includes all ratios of 150% and above.`);
   const key=$('distribution').nextElementSibling;
-  key.firstElementChild.textContent='Rust: below 50% · Green: 50% and above';
+  key.firstElementChild.textContent='Assessment / estimate · Last band includes 150% and above';
 }
 
 function renderTaxChart() {
@@ -163,10 +142,10 @@ function setMode(next,initialSort='gap') {
   for(const tab of document.querySelectorAll('[role=tab]')){const selected=tab.dataset.mode===mode;tab.setAttribute('aria-selected',String(selected));tab.tabIndex=selected?0:-1;}
   $('data-panel').setAttribute('aria-labelledby',mode==='tax'?'tax-tab':'assessment-tab');
   const tax=mode==='tax';
-  $('mode-note').textContent=tax?`Only ${data.metadata.with_annual_tax} homes have both a positive reported tax amount and a value estimate. Tax history year ${data.metadata.tax_years.join(', ')} is compared with estimates from their capture dates. Gaps use a 1% annual reference; they are not unpaid taxes.`:`${number.format(data.metadata.with_assessment)} homes have both an assessed value and an estimate. This view compares two capital values, not annual tax payments. Assessment years are often unavailable; no payment is inferred.`;
+  $('mode-note').textContent=tax?`${data.metadata.with_annual_tax} records · Tax year ${data.metadata.tax_years.join(', ')} · Difference = 1% of estimated value − reported annual tax. This is not unpaid tax.`:`${number.format(data.metadata.with_assessment)} records · Difference = estimated value − assessed value. Assessment years are often unavailable.`;
   $('amount-heading').textContent=tax?'Reported annual tax':'Assessed value';
   $('ratio-heading').textContent=tax?'Tax / estimate':'Assessed / estimate';
-  $('gap-heading').textContent=tax?'Gap to 1% benchmark':'Value − assessment';
+  $('gap-heading').textContent=tax?'Difference from 1% reference':'Value − assessment';
   $('table-caption').textContent=tax?'Reported annual tax compared with a 1% reference on estimated value':'Assessed values compared with third-party home-value estimates';
   $('sort').replaceChildren();
   for(const [value,text] of [['gap',tax?'Largest annual benchmark gap':'Largest assessment gap'],['rate',tax?'Lowest tax / estimate ratio':'Lowest assessed / estimate share'],['estimate','Highest estimated value'],['address','Address A–Z']]){const option=element('option',text);option.value=value;$('sort').append(option);}
@@ -185,7 +164,7 @@ async function init() {
     const response=await fetch(BASE+'/data.json');if(!response.ok)throw new Error(`HTTP ${response.status}`);
     data=await response.json();const m=data.metadata;
     $('estimate-count').textContent=number.format(m.with_estimate);$('assessment-count').textContent=number.format(m.with_assessment);$('tax-count').textContent=number.format(m.with_annual_tax);
-    $('snapshot').textContent=date(m.snapshot_date);$('footer-date').textContent=date(m.snapshot_date);
+    $('snapshot').textContent=date(m.snapshot_date);
     $('tax-tab-count').textContent=m.with_annual_tax;$('assessment-tab-count').textContent=number.format(m.with_assessment);
     const coverage=m.coverage,total=Object.values(coverage).reduce((a,b)=>a+b,0);
     $('coverage-detail').textContent=`The residential address inventory contains ${number.format(total)} addresses. ${number.format(m.matched_properties)} were matched to property records; ${number.format(m.with_estimate)} have a usable value estimate and ${number.format(m.with_assessment)} also have an assessment. Only ${m.with_annual_tax} have both a value estimate and a reported annual tax amount. ${number.format(m.without_estimate)} matched records without estimates are excluded from the public comparisons.`;
@@ -193,7 +172,7 @@ async function init() {
     const types=[...new Set(data.records.map(r=>r.home_type).filter(Boolean))].sort();
     for(const type of types){const option=element('option',label(type));option.value=type;$('home-type').append(option);}
     const params=new URLSearchParams(location.search);$('search').value=params.get('q')||'';if(types.includes(params.get('type')))$('home-type').value=params.get('type');
-    renderPair();renderDistribution();renderTaxChart();setMode(params.get('view')==='assessment'?'assessment':'tax',params.get('sort')||'gap');
+    renderDistribution();renderTaxChart();setMode(params.get('view')==='assessment'?'assessment':'tax',params.get('sort')||'gap');
     for(const tab of document.querySelectorAll('[role=tab]')) {
       tab.addEventListener('click',()=>setMode(tab.dataset.mode));
       tab.addEventListener('keydown',e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'tax':e.key==='End'?'assessment':mode==='tax'?'assessment':'tax';setMode(next);$(next+'-tab').focus();}});
@@ -204,7 +183,7 @@ async function init() {
     $('download-view').addEventListener('click',downloadView);$('close-detail').addEventListener('click',()=>$('detail').close());
     $('detail').addEventListener('click',e=>{if(e.target===$('detail')){const r=$('detail').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('detail').close();}});
   } catch(error) {
-    $('load-error').hidden=false;$('result-count').textContent='Data unavailable';$('paired-homes').textContent='Data unavailable. See the downloadable dataset.';console.error('Could not load study data',error);
+    $('load-error').hidden=false;$('result-count').textContent='Data unavailable';console.error('Could not load study data',error);
   }
 }
 if(typeof document!=='undefined')init();
