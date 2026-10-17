@@ -103,7 +103,7 @@ def export(database, destination):
     data = {'metadata':metadata,'records':records}
     (destination/'data.json').write_text(json.dumps(data,separators=(',',':'),allow_nan=False)+'\n')
     with (destination/'data.csv').open('w',newline='') as f:
-        writer=csv.DictWriter(f,fieldnames=list(records[0]))
+        writer=csv.DictWriter(f,fieldnames=list(records[0]),lineterminator='\n')
         writer.writeheader(); writer.writerows(records)
     print(json.dumps(metadata,indent=2))
 
