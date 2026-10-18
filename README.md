@@ -19,7 +19,7 @@ Requires Release REL.app, Python 3.11+, Git, and an OxylabsDatacenter Profile. L
 ## Facebook Marketplace / Santa Cruz
 
 [Monitor used stroller wagons within 10 miles using a native REL Action](facebook-marketplace/README.md).
-Runs daily at 9 AM, researches online and other-area Marketplace prices, and
+Uses native 30-minute repeats, researches online and other-area Marketplace prices, and
 posts new matches to the REL WhatsApp group through WhatsApp Web.
 
 Create the Action inside REL with the supplied [prompt](facebook-marketplace/ACTION.md).
