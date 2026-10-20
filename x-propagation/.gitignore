@@ -1,0 +1,7 @@
+.venv/
+data/
+storage/
+captures/
+references/
+__pycache__/
+*.log

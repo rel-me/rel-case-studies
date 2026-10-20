@@ -1,0 +1,199 @@
+{
+  "status": "baseline_completed_monitor_completed_with_coverage_gaps",
+  "seed_accounts": [
+    "nicksortor",
+    "SaraGonzalesTX",
+    "CarolineWren",
+    "RheinAmacher",
+    "mattvanswol",
+    "EricLDaugh",
+    "bennyjohnson",
+    "spencerpratt",
+    "LauraLoomer",
+    "elonmusk",
+    "RichardGrenell",
+    "GuntherEagleman",
+    "MarkMeadows",
+    "JackPosobiec",
+    "catturd2",
+    "DC_Draino",
+    "EndWokeness",
+    "libsoftiktok",
+    "johnrich",
+    "ScottPresler",
+    "DineshDSouza",
+    "w_terrence",
+    "BrandonStraka",
+    "DonaldJTrumpJr"
+  ],
+  "rel_session_id": "Session16781",
+  "rel_profile": "X",
+  "authentication_check": {
+    "url": "https://x.com/home",
+    "observed_at_utc": "2026-10-20T06:33:17.398Z",
+    "result": "Authenticated navigation and three-account pilot detail extraction verified"
+  },
+  "study_duration_days": 14,
+  "target_collection_interval_minutes": 30,
+  "initial_historical_window_days": 7,
+  "reporting_timezone": "America/Los_Angeles",
+  "storage_timezone": "UTC",
+  "study_started_at_utc": "2026-10-20T06:49:49.935919+00:00",
+  "pilot_verified": true,
+  "recurring_job": {
+    "id": "study-public-x-narrative-propagation",
+    "status": "ACTIVE",
+    "interval_minutes": 30,
+    "kind": "heartbeat",
+    "expanded_baseline_status": "completed bounded queue with coverage gaps; monitor cycle started",
+    "configuration_verified": true,
+    "verified_configuration_path": "/Users/gabe/.codex/automations/study-public-x-narrative-propagation/automation.toml",
+    "sample_count": 24,
+    "latest_monitor_status": "completed with coverage gaps; 32 of 32 URLs handled; new monitor next wakeup"
+  },
+  "documentation": {
+    "url": "https://docs.rel.me/crawlee/",
+    "saved_capture": "references/rel-crawlee.html"
+  },
+  "study_ends_at_utc": "2026-11-03T06:49:49.935919+00:00",
+  "pilot_counts": {
+    "distinct_posts_including_incidental_context": 80,
+    "observations": 192,
+    "coverage_status_counts": {
+      "attempt_started": 17,
+      "bounded_capture": 13,
+      "no_posts_or_inaccessible": 1
+    }
+  },
+  "sample_expansion": {
+    "date": "2026-10-20",
+    "count": 24,
+    "status": "24 seeds configured and recurring scope verified; public profile/source checks saved",
+    "basis": "User-requested expansion prioritizing Talarico amplification",
+    "documented_claim_or_speculation_accounts": 9,
+    "related_discussion_accounts": 3,
+    "broader_comparison_accounts": 12,
+    "broader_profile_headers_verified": 12,
+    "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00"
+  },
+  "last_collection_attempt": {
+    "recorded_at_utc": "2026-10-20T21:09:39.344141+00:00",
+    "run_id": "20261020T191616-monitor",
+    "cycle": "monitor",
+    "execution_started_at_utc": "2026-10-20T20:46:14.364805+00:00",
+    "status": "monitor_completed_with_coverage_gaps",
+    "queue": {
+      "total_queued_urls": 32,
+      "handled_urls": 32,
+      "finished": true
+    },
+    "monitor_observations": 278,
+    "monitor_distinct_posts_including_context": 120,
+    "execution_observations": 125,
+    "execution_distinct_posts_including_context": 82,
+    "new_post_ids_not_previously_observed": [
+      "2112619867035570313",
+      "2112620560886984932",
+      "2112625461209563522",
+      "2112631620817846659",
+      "2112639405064126660",
+      "2112622981629551063",
+      "2112623135891898616",
+      "2112623665942593588",
+      "2112645287286079539",
+      "2112637633067115003",
+      "2112625133592756727",
+      "2112627383509340439",
+      "2112624302281658763",
+      "2112641921948713308",
+      "2112628222735073489",
+      "2112626498813432313",
+      "2112636883075571910",
+      "2112645969879728388",
+      "2112610301157974192",
+      "2112647902631784696",
+      "2112636810421510147",
+      "2112644202454532524",
+      "2112646485091475842",
+      "2112632232829686231",
+      "2112640982089093156",
+      "2112646490539880465",
+      "2112641227988627630",
+      "2112626298686177641",
+      "2112625342955360667",
+      "2112625508643135913",
+      "2112629276038300028",
+      "2112643047569662156",
+      "2112642654840520996",
+      "2112642537445843183",
+      "2112649537294639140",
+      "2112647710461313049",
+      "2112644055087845531"
+    ],
+    "execution_failures": [
+      {
+        "url": "https://x.com/DonaldJTrumpJr",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "page_down_after_capture_1"
+      },
+      {
+        "url": "https://x.com/RheinAmacher",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/bennyjohnson",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/elonmusk",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/RichardGrenell",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/libsoftiktok",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/DineshDSouza",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/DonaldJTrumpJr",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "retries_exhausted"
+      }
+    ],
+    "execution_successful_visits": [
+      "https://x.com/w_terrence",
+      "https://x.com/BrandonStraka",
+      "https://x.com/nicksortor/status/2112622801328730236",
+      "https://x.com/nicksortor/status/2112621768913428766",
+      "https://x.com/CarolineWren",
+      "https://x.com/RheinAmacher/status/2102905595544342571",
+      "https://x.com/RheinAmacher/status/2112596703178359132",
+      "https://x.com/EricLDaugh/status/2112139211008577754",
+      "https://x.com/EricLDaugh/status/2112624849990406361",
+      "https://x.com/EricLDaugh/status/2112624270522396830",
+      "https://x.com/bennyjohnson/status/2110749015717359949",
+      "https://x.com/JackPosobiec",
+      "https://x.com/EndWokeness"
+    ],
+    "log": "data/logs/wakeup-20261020T204601.log",
+    "next_action": "Start a new monitor cycle at next wakeup",
+    "new_selected_episode_edges": 0,
+    "historical_searches_this_execution": 0,
+    "one_hop_searches_this_execution": 0,
+    "baseline_completed_at_utc": "2026-10-20T11:10:51.844438+00:00",
+    "monitor_ends_at_utc": "2026-11-03T06:49:49.935919+00:00"
+  },
+  "baseline_completed_at_utc": "2026-10-20T11:10:51.844438+00:00"
+}

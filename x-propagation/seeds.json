@@ -1,0 +1,463 @@
+{
+  "sample_revision": 2,
+  "expanded_on_reporting_date": "2026-10-20",
+  "reporting_timezone": "America/Los_Angeles",
+  "seed_count": 24,
+  "scope": "Public political figures, commentators and political publishing accounts; no private-user ideological inference",
+  "selection_limitations": [
+    "Purposive nonrepresentative sample",
+    "No claim of coordination, bots or common ownership",
+    "No verified amplification post is not proof of no amplification",
+    "Search results can be incomplete"
+  ],
+  "accounts": [
+    {
+      "priority": 1,
+      "handle": "nicksortor",
+      "profile_url": "https://x.com/nicksortor",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "asserts_allegation",
+      "evidence_url": "https://x.com/nicksortor/status/2109329520247660715",
+      "selection_basis": "Asserted facility confirmation",
+      "source_checks": []
+    },
+    {
+      "priority": 2,
+      "handle": "SaraGonzalesTX",
+      "profile_url": "https://x.com/SaraGonzalesTX",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "endorses_allegation",
+      "evidence_url": "https://x.com/SaraGonzalesTX/status/2108909919105626224",
+      "selection_basis": "Quoted Wren as supporting her sources",
+      "source_checks": []
+    },
+    {
+      "priority": 3,
+      "handle": "CarolineWren",
+      "profile_url": "https://x.com/CarolineWren",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "suggests_allegation",
+      "evidence_url": "https://x.com/CarolineWren/status/2108903544426266990",
+      "selection_basis": "Posted flight-route speculation",
+      "source_checks": []
+    },
+    {
+      "priority": 4,
+      "handle": "RheinAmacher",
+      "profile_url": "https://x.com/RheinAmacher",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "asserts_allegation",
+      "evidence_url": "https://x.com/RheinAmacher/status/2109330209195667874",
+      "selection_basis": "Posted recorded-call assertion",
+      "source_checks": []
+    },
+    {
+      "priority": 5,
+      "handle": "mattvanswol",
+      "profile_url": "https://x.com/mattvanswol",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "endorses_allegation",
+      "evidence_url": "https://x.com/mattvanswol/status/2109330107068498007",
+      "selection_basis": "Repeated the hospital allegation",
+      "source_checks": []
+    },
+    {
+      "priority": 6,
+      "handle": "EricLDaugh",
+      "profile_url": "https://x.com/EricLDaugh",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "asserts_allegation",
+      "evidence_url": "https://x.com/EricLDaugh/status/2109330545834442967",
+      "selection_basis": "Asserted hospitalization and linked Sortor video",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/EricLDaugh-2109330545834442967.json",
+          "capture": "captures/seed-expansion/EricLDaugh-2109330545834442967.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 7,
+      "handle": "bennyjohnson",
+      "profile_url": "https://x.com/bennyjohnson",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "speculative_amplification",
+      "evidence_url": "https://x.com/bennyjohnson/status/2108598782610829649",
+      "selection_basis": "Repeated speculation attributed to Pratt and Musk",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/bennyjohnson-2108598782610829649.json",
+          "capture": "captures/seed-expansion/bennyjohnson-2108598782610829649.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 8,
+      "handle": "spencerpratt",
+      "profile_url": "https://x.com/spencerpratt",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "speculative_amplification",
+      "evidence_url": "https://x.com/spencerpratt/status/2108553958696399249",
+      "selection_basis": "Claimed sources said Talarico was in a mental health facility, with conditional qualifications",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/spencerpratt-2108553958696399249.json",
+          "capture": "captures/seed-expansion/spencerpratt-2108553958696399249.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 9,
+      "handle": "LauraLoomer",
+      "profile_url": "https://x.com/LauraLoomer",
+      "tier": "documented_claim_or_speculation",
+      "talarico_stance": "conditional_amplification",
+      "evidence_url": "https://x.com/LauraLoomer/status/2109352779760218212",
+      "selection_basis": "Quoted Sortor, conditionally discussing consequences if true",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/LauraLoomer-2109352779760218212.json",
+          "capture": null,
+          "full_target_post_verified": null,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": "Timed out waiting for embedded Chromium after 15.0 seconds"
+        },
+        {
+          "record": "data/reviews/20261020T101958.json",
+          "capture": "data/raw/20261020T072011-baseline/0adef5ba4e6d756e-0-103128795456.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null,
+          "observed_at_utc": "2026-10-20T10:31:28.795393+00:00",
+          "verification_basis": "Target post ID and complete rendered text checked in saved standalone evidence capture"
+        }
+      ],
+      "evidence_limitation": "Earlier detail wait failed; full standalone text is now captured. Historical failure record preserved. Missing reply-parent/quote-source IDs remain unresolved.",
+      "search_review": "captures/seed-expansion/search-review.json"
+    },
+    {
+      "priority": 10,
+      "handle": "elonmusk",
+      "profile_url": "https://x.com/elonmusk",
+      "tier": "related_discussion",
+      "talarico_stance": "related_suspicion",
+      "evidence_url": "https://x.com/elonmusk/status/2109346652565946776",
+      "selection_basis": "Said campaign was hiding something big in Daugherty conversation; distinct from an explicit hospitalization assertion",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/elonmusk-2109346652565946776.json",
+          "capture": null,
+          "full_target_post_verified": null,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": "Timed out waiting for embedded Chromium after 15.0 seconds"
+        },
+        {
+          "record": "data/reviews/20261020T101958.json",
+          "capture": "data/raw/20261020T072011-baseline/0f37ba3f98f626f6-0-103436697882.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null,
+          "observed_at_utc": "2026-10-20T10:34:36.697816+00:00",
+          "verification_basis": "Target post ID and complete rendered text checked in saved standalone evidence capture"
+        }
+      ],
+      "evidence_limitation": "Earlier detail wait failed; full standalone text is now captured. Historical failure record preserved. Missing reply-parent/quote-source IDs remain unresolved."
+    },
+    {
+      "priority": 11,
+      "handle": "RichardGrenell",
+      "profile_url": "https://x.com/RichardGrenell",
+      "tier": "related_discussion",
+      "talarico_stance": "related_suspicion",
+      "evidence_url": "https://x.com/RichardGrenell/status/2109265270984347933",
+      "selection_basis": "Questioned flu explanation; not by itself a hospitalization assertion",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/RichardGrenell-2109265270984347933.json",
+          "capture": "captures/seed-expansion/RichardGrenell-2109265270984347933.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 12,
+      "handle": "GuntherEagleman",
+      "profile_url": "https://x.com/GuntherEagleman",
+      "tier": "related_discussion",
+      "talarico_stance": "related_suspicion",
+      "evidence_url": "https://x.com/GuntherEagleman/status/2109730359202177260",
+      "selection_basis": "Questions absence/flu explanation and mentions Ohio facility denial in a question; does not directly assert hospitalization",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/GuntherEagleman-2109730359202177260.json",
+          "capture": null,
+          "full_target_post_verified": null,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": "Timed out waiting for embedded Chromium after 15.0 seconds"
+        },
+        {
+          "record": "data/reviews/20261020T101958.json",
+          "capture": "data/raw/20261020T072011-baseline/0688d45083ab9ef7-0-103334035725.html",
+          "full_target_post_verified": true,
+          "public_profile_name": null,
+          "profile_header_verified": false,
+          "wait_error": null,
+          "observed_at_utc": "2026-10-20T10:33:34.035529+00:00",
+          "verification_basis": "Target post ID and complete rendered text checked in saved standalone evidence capture"
+        }
+      ],
+      "evidence_limitation": "Earlier detail wait failed; full standalone text is now captured. Historical failure record preserved. Missing reply-parent/quote-source IDs remain unresolved.",
+      "search_review": "captures/seed-expansion/search-review.json"
+    },
+    {
+      "priority": 13,
+      "handle": "MarkMeadows",
+      "profile_url": "https://x.com/MarkMeadows",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/MarkMeadows",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/MarkMeadows-profile.json",
+          "capture": "captures/seed-expansion/MarkMeadows-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Mark Meadows@MarkMeadows",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 14,
+      "handle": "JackPosobiec",
+      "profile_url": "https://x.com/JackPosobiec",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/JackPosobiec",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/JackPosobiec-profile.json",
+          "capture": "captures/seed-expansion/JackPosobiec-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Jack Posobiec@JackPosobiec",
+          "profile_header_verified": true,
+          "wait_error": "Timed out waiting for embedded Chromium after 15.0 seconds"
+        }
+      ]
+    },
+    {
+      "priority": 15,
+      "handle": "catturd2",
+      "profile_url": "https://x.com/catturd2",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/catturd2",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/catturd2-profile.json",
+          "capture": "captures/seed-expansion/catturd2-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Catturd ™@catturd2",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 16,
+      "handle": "DC_Draino",
+      "profile_url": "https://x.com/DC_Draino",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/DC_Draino",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/DC_Draino-profile.json",
+          "capture": "captures/seed-expansion/DC_Draino-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "DC_Draino@DC_Draino",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 17,
+      "handle": "EndWokeness",
+      "profile_url": "https://x.com/EndWokeness",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/EndWokeness",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/EndWokeness-profile.json",
+          "capture": "captures/seed-expansion/EndWokeness-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "End Wokeness@EndWokeness",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 18,
+      "handle": "libsoftiktok",
+      "profile_url": "https://x.com/libsoftiktok",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/libsoftiktok",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/libsoftiktok-profile.json",
+          "capture": "captures/seed-expansion/libsoftiktok-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Libs of TikTok@libsoftiktok",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 19,
+      "handle": "johnrich",
+      "profile_url": "https://x.com/johnrich",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/johnrich",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/johnrich-profile.json",
+          "capture": "captures/seed-expansion/johnrich-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "John Rich🇺🇸@johnrich",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 20,
+      "handle": "ScottPresler",
+      "profile_url": "https://x.com/ScottPresler",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/ScottPresler",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/ScottPresler-profile.json",
+          "capture": "captures/seed-expansion/ScottPresler-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "ThePersistence@ScottPresler",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 21,
+      "handle": "DineshDSouza",
+      "profile_url": "https://x.com/DineshDSouza",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/DineshDSouza",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/DineshDSouza-profile.json",
+          "capture": "captures/seed-expansion/DineshDSouza-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Dinesh D'Souza@DineshDSouza",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 22,
+      "handle": "w_terrence",
+      "profile_url": "https://x.com/w_terrence",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/w_terrence",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/w_terrence-profile.json",
+          "capture": "captures/seed-expansion/w_terrence-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Terrence K. Williams@w_terrence",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 23,
+      "handle": "BrandonStraka",
+      "profile_url": "https://x.com/BrandonStraka",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/BrandonStraka",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/BrandonStraka-profile.json",
+          "capture": "captures/seed-expansion/BrandonStraka-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Brandon Straka #WalkAway@BrandonStraka",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    },
+    {
+      "priority": 24,
+      "handle": "DonaldJTrumpJr",
+      "profile_url": "https://x.com/DonaldJTrumpJr",
+      "tier": "broader_comparison",
+      "talarico_stance": "not_established_in_bounded_review",
+      "evidence_url": "https://x.com/DonaldJTrumpJr",
+      "selection_basis": "Broader public MAGA/pro-Trump political sample; no Talarico amplification attributed without a specific post",
+      "source_checks": [
+        {
+          "record": "captures/seed-expansion/DonaldJTrumpJr-profile.json",
+          "capture": "captures/seed-expansion/DonaldJTrumpJr-profile.html",
+          "full_target_post_verified": null,
+          "public_profile_name": "Donald Trump Jr.@DonaldJTrumpJr",
+          "profile_header_verified": true,
+          "wait_error": null
+        }
+      ]
+    }
+  ],
+  "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00",
+  "latest_evidence_review_at_utc": "2026-10-20T10:37:57.001198+00:00"
+}

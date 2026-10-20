@@ -1,0 +1,60 @@
+{
+  "episode": "Milan / Piazza del Duomo unrest coverage",
+  "episode_kind": "common_source_comparison",
+  "reviewed_at_utc": "2026-10-20T10:57:51.314078+00:00",
+  "review_status": "bounded_reference_evidence",
+  "claim_status": "Description of public posts; underlying footage/event not independently verified",
+  "posts": [
+    {
+      "post_id": "2112287046207475745",
+      "url": "https://x.com/spencerpratt/status/2112287046207475745",
+      "author_handle": "spencerpratt",
+      "publication_timestamp_utc": "2026-10-19T20:57:30.000Z",
+      "capture": "data/raw/20261020T072011-baseline/730fc444115a7eb6-0-104620504552.html",
+      "text_status": "rendered_text",
+      "stance": "quoting"
+    },
+    {
+      "post_id": "2112438832247480391",
+      "url": "https://x.com/RheinAmacher/status/2112438832247480391",
+      "author_handle": "RheinAmacher",
+      "publication_timestamp_utc": "2026-10-20T07:00:39.000Z",
+      "capture": "data/raw/20261020T072011-baseline/270da268366d9bfa-0-105323356877.html",
+      "text_status": "rendered_text",
+      "stance": "endorsing"
+    }
+  ],
+  "referenced_source": {
+    "url": "https://x.com/visegrad24/status/2112247272411213987",
+    "publication_timestamp_utc": null,
+    "direct_capture": null,
+    "reference_visible_in": "data/raw/20261020T072011-baseline/270da268366d9bfa-0-105323356877.html"
+  },
+  "edges": [
+    {
+      "from_post_id": "2112247272411213987",
+      "from_post_url": "https://x.com/visegrad24/status/2112247272411213987",
+      "to_post_id": "2112438832247480391",
+      "to_post_url": "https://x.com/RheinAmacher/status/2112438832247480391",
+      "category": "explicit_sharing",
+      "relationship": "source_post_video_link",
+      "basis": "Full Amacher post text and rendered anchor include the canonical Visegrad24 status/video URL",
+      "evidence_capture": "data/raw/20261020T072011-baseline/270da268366d9bfa-0-105323356877.html",
+      "source_post_directly_opened": false
+    }
+  ],
+  "unresolved_quote": {
+    "post_url": "https://x.com/spencerpratt/status/2112287046207475745",
+    "observed_quote_author": "visegrad24",
+    "canonical_quoted_post_id": null,
+    "basis_capture": "data/raw/20261020T072011-baseline/730fc444115a7eb6-0-104620504552.html"
+  },
+  "interpretation": "Distinctive location/scene wording nominates a shared-source cluster. One direct post reference is verified. Pratt quote author is visible, but its exact source-post ID is not established.",
+  "limitations": [
+    "No Pratt-to-Amacher or Amacher-to-Pratt edge",
+    "No canonical source-post assignment to Pratt quote from wording alone",
+    "Source post not directly opened and no new browser visit added beyond budget",
+    "Common footage/news description can explain overlap; timing alone is not transmission evidence",
+    "No event authenticity, coordination, bot, ownership or intent finding"
+  ]
+}
