@@ -204,8 +204,8 @@
     "worktree": "/Users/gabe/projects.next/rel-case-studies-x-propagation-pr",
     "requested_by_user": "Create a branch and PR; commit and push changes; monitor the PR and fix issues as they arise.",
     "monitoring_instruction": "On subsequent scheduled wakeups, inspect PR checks, reviews and inline comments; fix actionable study issues in the isolated worktree, validate, commit and push. Preserve the REL study scope and original deadline. Do not merge without authorization. Keep unrelated workspace changes out of the PR. Sync only reviewed study source/documentation/registry changes, excluding local captures, runtime data and environment.",
-    "last_checked_at_utc": "2026-10-20T21:12:00Z",
-    "last_observed_status": "OPEN, merge state CLEAN, no reviews/comments or checks reported",
+    "last_checked_at_utc": "2026-10-20T21:11:34.099937+00:00",
+    "last_observed_status": "OPEN; no reviews, inline comments or checks reported; merge state recalculating after push",
     "validation": "11 unit tests passed in isolated worktree"
   }
 }
