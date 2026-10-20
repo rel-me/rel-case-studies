@@ -159,11 +159,24 @@ class CollectionWindowEnded(RuntimeError):
     pass
 
 
-async def run_before_deadline(crawler, requests, deadline):
-    if deadline is None:
-        return await crawler.run(requests)
-    remaining = max(0, (deadline - datetime.now(UTC)).total_seconds())
-    return await asyncio.wait_for(crawler.run(requests), timeout=remaining)
+class ExecutionLimitReached(TimeoutError):
+    pass
+
+
+async def run_before_deadline(crawler, requests, deadline, execution_timeout_seconds=1200):
+    # Request timeouts do not cover time spent waiting for Crawlee's resource
+    # gate to dispatch work. Bound the whole execution and await its cleanup.
+    remaining = ((deadline - datetime.now(UTC)).total_seconds()
+                 if deadline is not None else float('inf'))
+    execution_limited = execution_timeout_seconds < remaining
+    timeout = asyncio.timeout(max(0, min(execution_timeout_seconds, remaining)))
+    try:
+        async with timeout:
+            return await crawler.run(requests)
+    except TimeoutError as exc:
+        if timeout.expired() and execution_limited:
+            raise ExecutionLimitReached('Execution time limit reached; retain queue for resume') from exc
+        raise
 
 
 def save_capture(db, run_id, html, location, index, deadline=None):
@@ -356,8 +369,14 @@ async def collect(args):
     # preserves handled requests and retry counts.
     requests = [Request.from_url(url, user_data={'kind': kind}) for url, kind in plans]
     requests += [Request.from_url(url, user_data={'kind': 'detail'}) for url in sorted(detail_keys)]
+    execution_limited = False
     try:
-        await run_before_deadline(crawler, requests, deadline)
+        await run_before_deadline(crawler, requests, deadline, CONFIG['max_execution_seconds'])
+    except ExecutionLimitReached as exc:
+        execution_limited = True
+        with db:
+            db.execute('INSERT INTO coverage VALUES(?,?,?,?,?,?)',
+                       (run_id, '__execution__', now(), None, 'execution_time_limit', str(exc)))
     except (TimeoutError, CollectionWindowEnded):
         if deadline is None or datetime.now(UTC) < deadline:
             raise
@@ -370,6 +389,9 @@ async def collect(args):
     for url in sorted(detail_keys):
         await queue.add_request(Request.from_url(url, user_data={'kind': 'detail'}))
     export(db)
+    if execution_limited:
+        atomic_json(state_path, state)
+        raise SystemExit('Execution time limit reached; checkpoint retained. Resume with the same --cycle.')
     if not await queue.is_finished():
         atomic_json(state_path, state)
         raise SystemExit('Cycle interrupted; checkpoint retained. Resume with the same --cycle.')

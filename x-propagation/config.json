@@ -34,6 +34,7 @@
   "historical_days": 7,
   "duration_days": 14,
   "interval_minutes": 30,
+  "max_execution_seconds": 1200,
   "reporting_timezone": "America/Los_Angeles",
   "max_scrolls": 2,
   "max_detail_visits": 8,

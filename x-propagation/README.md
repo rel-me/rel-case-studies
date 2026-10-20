@@ -178,6 +178,11 @@ Re-run the same `--cycle` after interruption. A named persistent Crawlee queue
 resumes the active cycle. A new queue name per completed cycle permits account
 revisits; post deduplication lives separately in SQLite. The process lock
 prevents overlapping collectors. Raw captures have distinct filenames on retry.
+Each execution is limited to 20 minutes, including waits for Crawlee to dispatch
+work under resource pressure. At that limit the crawler is cancelled and its
+cleanup awaited, existing observations are exported, and any unfinished queue
+remains checkpointed for the next wakeup. This does not reset URL or retry
+budgets, mark an unfinished cycle complete, or extend the study deadline.
 The monitor window starts on its first run and stops collection after 14 days.
 The final report still requires evidence review; it must not be labeled complete
 merely because a timestamp has elapsed.

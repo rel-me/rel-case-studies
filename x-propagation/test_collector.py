@@ -1,12 +1,13 @@
 import unittest
-from collector import (CollectionWindowEnded, normalize, parse_posts, plan_requests,
+from collector import (CollectionWindowEnded, ExecutionLimitReached, normalize, parse_posts, plan_requests,
                        run_before_deadline, save_capture)
 from pathlib import Path
 import json
 import asyncio
 from datetime import datetime, timedelta, timezone
 import tempfile
-from unittest.mock import patch
+from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
 import collector
 
 
@@ -95,6 +96,79 @@ class ExtractionTests(unittest.TestCase):
 
 
 class DeadlineTests(unittest.IsolatedAsyncioTestCase):
+    async def test_execution_cap_exports_and_retains_active_checkpoint(self):
+        class FakeCrawler:
+            def __init__(self, **kwargs):
+                self.router = SimpleNamespace(default_handler=lambda handler: handler)
+
+            def error_handler(self, handler):
+                return handler
+
+            def failed_request_handler(self, handler):
+                return handler
+
+            async def run(self, requests):
+                await asyncio.sleep(3600)
+
+        state = {'pilot_verified': True,
+                 'monitor_started_at_utc': datetime.now(timezone.utc).isoformat(),
+                 'monitor_ends_at_utc': (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
+                 'baseline_completed_at_utc': 'preserved',
+                 'active_run': {'id': '20261020T231621-monitor', 'cycle': 'monitor'}}
+        config = json.loads(Path(__file__).with_name('config.json').read_text())
+        config['max_execution_seconds'] = 0.02
+        queue = AsyncMock()
+        queue.is_finished.return_value = True  # Cancellation must not imply completion.
+        db = MagicMock()
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'data').mkdir()
+            (root / 'data/checkpoint.json').write_text(json.dumps(state))
+            with patch.object(collector, 'ROOT', root), patch.object(collector, 'CONFIG', config, create=True), \
+                    patch.object(collector, 'database', return_value=db), \
+                    patch.object(collector, 'export') as export, \
+                    patch.object(collector, 'RelCrawler', FakeCrawler), \
+                    patch.object(collector.RequestQueue, 'open', AsyncMock(return_value=queue)):
+                with self.assertRaisesRegex(SystemExit, 'Execution time limit reached'):
+                    await collector.collect(SimpleNamespace(cycle='monitor'))
+                export.assert_called_once_with(db)
+            self.assertEqual(json.loads((root / 'data/checkpoint.json').read_text()), state)
+        queue.is_finished.assert_not_awaited()
+        self.assertEqual(db.execute.call_args.args[1][4], 'execution_time_limit')
+
+    async def test_execution_limit_cancels_and_awaits_cleanup_before_study_deadline(self):
+        class FakeCrawler:
+            cleaned_up = False
+
+            async def run(self, requests):
+                try:
+                    await asyncio.sleep(3600)
+                finally:
+                    await asyncio.sleep(0.02)
+                    self.cleaned_up = True
+
+        crawler = FakeCrawler()
+        deadline = datetime.now(timezone.utc) + timedelta(days=14)
+        with self.assertRaises(ExecutionLimitReached):
+            await run_before_deadline(crawler, [], deadline, execution_timeout_seconds=0.02)
+        self.assertTrue(crawler.cleaned_up)
+
+    async def test_execution_limit_does_not_mask_crawler_timeout(self):
+        class FakeCrawler:
+            async def run(self, requests):
+                raise TimeoutError('request failed')
+
+        with self.assertRaisesRegex(TimeoutError, 'request failed') as error:
+            await run_before_deadline(FakeCrawler(), [], None)
+        self.assertNotIsInstance(error.exception, ExecutionLimitReached)
+
+    async def test_completed_execution_returns_without_waiting_for_limit(self):
+        class FakeCrawler:
+            async def run(self, requests):
+                return requests
+
+        self.assertEqual(await run_before_deadline(FakeCrawler(), ['done'], None), ['done'])
+
     async def test_deadline_cancels_and_awaits_the_running_cycle(self):
         class FakeCrawler:
             cleaned_up = False
@@ -106,9 +180,10 @@ class DeadlineTests(unittest.IsolatedAsyncioTestCase):
                     self.cleaned_up = True
 
         crawler = FakeCrawler()
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(TimeoutError) as error:
             await run_before_deadline(crawler, [],
                                      datetime.now(timezone.utc) + timedelta(milliseconds=20))
+        self.assertNotIsInstance(error.exception, ExecutionLimitReached)
         self.assertTrue(crawler.cleaned_up)
 
 
