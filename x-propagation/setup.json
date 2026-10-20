@@ -49,7 +49,7 @@
     "configuration_verified": true,
     "verified_configuration_path": "/Users/gabe/.codex/automations/study-public-x-narrative-propagation/automation.toml",
     "sample_count": 24,
-    "latest_monitor_status": "partial; 7 of 32 URLs handled; same cycle checkpointed"
+    "latest_monitor_status": "partial; 11 of 32 URLs handled; same cycle checkpointed"
   },
   "documentation": {
     "url": "https://docs.rel.me/crawlee/",
@@ -77,58 +77,61 @@
     "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00"
   },
   "last_collection_attempt": {
-    "recorded_at_utc": "2026-10-20T21:57:16.265836+00:00",
+    "recorded_at_utc": "2026-10-20T22:24:44.547803+00:00",
     "run_id": "20261020T211616-monitor",
     "cycle": "monitor",
-    "execution_started_at_utc": "2026-10-20T21:46:16.943150+00:00",
+    "execution_started_at_utc": "2026-10-20T22:16:18.344491+00:00",
     "status": "partial_monitor_browser_capture_timeouts",
     "queue": {
       "total_queued_urls": 32,
-      "handled_urls": 7,
+      "handled_urls": 11,
       "finished": false
     },
-    "monitor_observations": 91,
-    "monitor_distinct_posts_including_context": 45,
-    "execution_observations": 62,
-    "execution_distinct_posts_including_context": 30,
+    "monitor_observations": 146,
+    "monitor_distinct_posts_including_context": 69,
+    "execution_observations": 55,
+    "execution_distinct_posts_including_context": 24,
     "new_post_ids_not_previously_observed": [
-      "2112649907547054233",
-      "2112661335850828184",
-      "2112649053758493138",
-      "2112660259781452020",
-      "2112661606585061773",
-      "2112659651963564340",
-      "2112657987823403195"
+      "2112666248190611513",
+      "2112660900393996433",
+      "2112659163373527308",
+      "2112658241444258233",
+      "2112657876472803498",
+      "2112656933010432287",
+      "2112656273120600380",
+      "2112655051034357792",
+      "2112653146509991946",
+      "2112650684055396521",
+      "2112663040533434690",
+      "2112660216873701823",
+      "2112668624402211052",
+      "2112662325354172616",
+      "2112653883134693768"
     ],
     "execution_failures": [
       {
-        "url": "https://x.com/LauraLoomer",
-        "error": "Request handler timed out after 150.0 seconds",
-        "stage": "html_capture_2"
-      },
-      {
-        "url": "https://x.com/elonmusk",
+        "url": "https://x.com/EndWokeness",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
         "stage": "page_down_after_capture_0"
       },
       {
-        "url": "https://x.com/MarkMeadows",
-        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
-        "stage": "page_down_after_capture_0"
-      },
-      {
-        "url": "https://x.com/JackPosobiec",
+        "url": "https://x.com/libsoftiktok",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
         "stage": "page_down_after_capture_1"
+      },
+      {
+        "url": "https://x.com/DineshDSouza",
+        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
+        "stage": "page_down_after_capture_0"
       }
     ],
     "execution_successful_visits": [
-      "https://x.com/bennyjohnson",
-      "https://x.com/spencerpratt",
-      "https://x.com/RichardGrenell",
-      "https://x.com/GuntherEagleman"
+      "https://x.com/catturd2",
+      "https://x.com/DC_Draino",
+      "https://x.com/johnrich",
+      "https://x.com/ScottPresler"
     ],
-    "log": "data/logs/wakeup-20261020T214601.log",
+    "log": "data/logs/wakeup-20261020T221601.log",
     "next_action": "Resume the same active monitor cycle at next wakeup; no overlapping collectors or repeated historical searches",
     "new_selected_episode_edges": 0,
     "historical_searches_this_execution": 0,
@@ -145,8 +148,8 @@
     "worktree": "/Users/gabe/projects.next/rel-case-studies-x-propagation-pr",
     "requested_by_user": "Create a branch and PR; commit and push changes; monitor the PR and fix issues as they arise.",
     "monitoring_instruction": "On subsequent scheduled wakeups, inspect PR checks, reviews and inline comments; fix actionable study issues in the isolated worktree, validate, commit and push. Preserve the REL study scope and original deadline. Do not merge without authorization. Keep unrelated workspace changes out of the PR. Sync only reviewed study source/documentation/registry changes, excluding local captures, runtime data and environment.",
-    "last_checked_at_utc": "2026-10-20T21:46:16.945975+00:00",
-    "last_observed_status": "OPEN, CLEAN; no reviews, inline comments or checks reported",
+    "last_checked_at_utc": "2026-10-20T22:16:18.347654+00:00",
+    "last_observed_status": "OPEN; merge state UNKNOWN; no reviews, inline comments or checks reported",
     "validation": "11 unit tests passed in isolated worktree"
   }
 }
