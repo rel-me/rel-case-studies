@@ -1,5 +1,5 @@
 {
-  "status": "baseline_completed_monitor_completed_with_coverage_gaps",
+  "status": "baseline_completed_monitor_partial_checkpointed",
   "seed_accounts": [
     "nicksortor",
     "SaraGonzalesTX",
@@ -49,7 +49,7 @@
     "configuration_verified": true,
     "verified_configuration_path": "/Users/gabe/.codex/automations/study-public-x-narrative-propagation/automation.toml",
     "sample_count": 24,
-    "latest_monitor_status": "completed with coverage gaps; 32 of 32 URLs handled; new monitor next wakeup"
+    "latest_monitor_status": "partial; 7 of 32 URLs handled; same cycle checkpointed"
   },
   "documentation": {
     "url": "https://docs.rel.me/crawlee/",
@@ -77,134 +77,61 @@
     "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00"
   },
   "last_collection_attempt": {
-    "recorded_at_utc": "2026-10-20T23:13:33.814243+00:00",
-    "run_id": "20261020T211616-monitor",
+    "recorded_at_utc": "2026-10-20T23:36:54.746239+00:00",
+    "run_id": "20261020T231621-monitor",
     "cycle": "monitor",
-    "execution_started_at_utc": "2026-10-20T22:46:22.758174+00:00",
-    "status": "monitor_completed_with_coverage_gaps",
+    "execution_started_at_utc": "2026-10-20T23:16:20.341136+00:00",
+    "status": "partial_monitor_browser_capture_timeouts",
     "queue": {
       "total_queued_urls": 32,
-      "handled_urls": 32,
-      "finished": true
+      "handled_urls": 7,
+      "finished": false
     },
-    "monitor_observations": 305,
-    "monitor_distinct_posts_including_context": 139,
-    "execution_observations": 159,
-    "execution_distinct_posts_including_context": 97,
+    "monitor_observations": 85,
+    "monitor_distinct_posts_including_context": 35,
+    "execution_observations": 85,
+    "execution_distinct_posts_including_context": 35,
     "new_post_ids_not_previously_observed": [
-      "2112672142726701327",
-      "2112665173953511535",
-      "2112653289452118359",
-      "2112653342065226110",
-      "2112660198246551971",
-      "2112650292022084006",
-      "2112649853398597805",
-      "2112671274073813363",
-      "2112664141681057822",
-      "2112652706347426269",
-      "2112651529899663847",
-      "2112649687735976414",
-      "2112651578184433735",
-      "2112658981177184668",
-      "2112679328718746104",
-      "2112674958354604502",
-      "2112674772941443466",
-      "2112679300340007359",
-      "2112679147524767872",
-      "2112678731773014094",
-      "2112676880327348305",
-      "2112676631634706562",
-      "2112675456105558079",
-      "2112675135987589135",
-      "2112673111594152093",
-      "2112656522597843010",
-      "2112650032277024825",
-      "2112650358241816717",
-      "2112650396057391254",
-      "2112653622106534378",
-      "2112675692575858787",
-      "2112655908794970499",
-      "2112657698118349169",
-      "2112643612379173001",
-      "2112642518198149368",
-      "2112659446732349511",
-      "2112648102620352866",
-      "2112652322496975019",
-      "2112640648105046508",
-      "2112630313662984626",
-      "2112629971684655297",
-      "2112636827265822979",
-      "2112637523956502755",
-      "2112638308513886511",
-      "2112636502433759408",
-      "2112644247727792493",
-      "2112669138514739268",
-      "2112681809528115622",
-      "2112647069945282834",
-      "2112660121167761762",
-      "2112630450976165890"
+      "2112678841382752570",
+      "2112678727377145866",
+      "2112664550029799581",
+      "2112661743386177888",
+      "2112685085962973511",
+      "2112684666054385836",
+      "2112662216495296533",
+      "2112682878517629299",
+      "2112679500790333493",
+      "2112688265442832708",
+      "2112666467712073815"
     ],
     "execution_failures": [
       {
-        "url": "https://x.com/CarolineWren",
+        "url": "https://x.com/RheinAmacher",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
-        "stage": "retries_exhausted"
+        "stage": "page_down_after_capture_0"
       },
       {
-        "url": "https://x.com/mattvanswol",
+        "url": "https://x.com/bennyjohnson",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/EricLDaugh",
-        "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/bennyjohnson/status/2112649907547054233",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: Remote end closed connection without response",
-        "stage": "navigation"
-      },
-      {
-        "url": "https://x.com/bennyjohnson/status/2112629276038300028",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: timed out",
-        "stage": "navigation"
-      },
-      {
-        "url": "https://x.com/LauraLoomer",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: timed out",
-        "stage": "retries_exhausted"
+        "stage": "page_down_after_capture_0"
       },
       {
         "url": "https://x.com/elonmusk",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: timed out",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/EndWokeness",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
-        "stage": "retries_exhausted"
+        "stage": "page_down_after_capture_0"
       }
     ],
     "execution_successful_visits": [
-      "https://x.com/w_terrence",
-      "https://x.com/BrandonStraka",
-      "https://x.com/DonaldJTrumpJr",
-      "https://x.com/nicksortor/status/2112649348366631420",
-      "https://x.com/RheinAmacher/status/2102905595544342571",
-      "https://x.com/RheinAmacher/status/2112596703178359132",
-      "https://x.com/EricLDaugh/status/2112139211008577754",
-      "https://x.com/EricLDaugh/status/2112649475458265197",
-      "https://x.com/bennyjohnson/status/2110749015717359949",
-      "https://x.com/MarkMeadows",
-      "https://x.com/JackPosobiec",
-      "https://x.com/libsoftiktok",
-      "https://x.com/DineshDSouza",
-      "https://x.com/bennyjohnson/status/2112649907547054233",
-      "https://x.com/bennyjohnson/status/2112629276038300028"
+      "https://x.com/nicksortor",
+      "https://x.com/SaraGonzalesTX",
+      "https://x.com/CarolineWren",
+      "https://x.com/mattvanswol",
+      "https://x.com/EricLDaugh",
+      "https://x.com/spencerpratt",
+      "https://x.com/LauraLoomer"
     ],
-    "log": "data/logs/wakeup-20261020T224601.log",
-    "next_action": "Start a new monitor cycle at next wakeup",
+    "log": "data/logs/wakeup-20261020T231601.log",
+    "next_action": "Resume the same active monitor cycle at next wakeup; no overlapping collectors or repeated historical searches",
     "new_selected_episode_edges": 0,
     "historical_searches_this_execution": 0,
     "one_hop_searches_this_execution": 0,
@@ -220,8 +147,15 @@
     "worktree": "/Users/gabe/projects.next/rel-case-studies-x-propagation-pr",
     "requested_by_user": "Create a branch and PR; commit and push changes when applicable; in a sub-agent, monitor the PR and fix issues as they arise.",
     "monitoring_instruction": "On subsequent scheduled wakeups, use a sub-agent to inspect PR checks, reviews and inline comments and fix actionable study issues in the isolated worktree, validating, committing and pushing when applicable. Parent owns collector, REL session and setup metadata. Preserve study scope/deadline and unrelated work; never merge without authorization. Sync reviewed study changes only; exclude captures, runtime data and environment.",
-    "last_checked_at_utc": "2026-10-20T23:06:31+00:00",
-    "last_observed_status": "Sub-agent check: OPEN; no reviews, inline comments, issue comments or checks reported",
-    "validation": "11 unit tests passed in isolated worktree"
+    "last_checked_at_utc": "2026-10-20T23:23:22+00:00",
+    "last_observed_status": "Sub-agent check on37f3b974: OPEN; no checks, reviews or comments",
+    "validation": "15 offline extraction, queue, export, deadline and execution-limit tests passed in isolated worktree"
+  },
+  "execution_limit": {
+    "seconds": 1200,
+    "scope": "per execution, including resource-gated dispatch waits",
+    "on_limit": "Cancel and await crawler, export observations, preserve active run/queue; original study deadline wins",
+    "implemented_commit": "37f3b974b6b63c287c617b2350dc421afbcd4bbc",
+    "applies_from": "next execution after2026-10-20T23:36Z"
   }
 }
