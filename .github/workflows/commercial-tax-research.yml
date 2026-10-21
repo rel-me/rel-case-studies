@@ -1,0 +1,27 @@
+name: Commercial tax research checks
+
+on:
+  pull_request:
+    paths:
+      - commercial-tax-delinquency/**
+      - .github/workflows/commercial-tax-research.yml
+  push:
+    branches: [main]
+    paths:
+      - commercial-tax-delinquency/**
+      - .github/workflows/commercial-tax-research.yml
+
+permissions:
+  contents: read
+
+jobs:
+  parser-and-workflow-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install -r commercial-tax-delinquency/requirements-test.txt
+      - run: python -m unittest discover -s commercial-tax-delinquency -p 'test_*.py' -v
+      - run: python -m compileall -q commercial-tax-delinquency

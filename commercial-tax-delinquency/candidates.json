@@ -1,0 +1,30 @@
+[
+  {
+    "county": "Santa Cruz",
+    "street_address": "408 Trout Gulch Rd",
+    "apn_hint": "041-022-14-000",
+    "listing_url": "https://www.loopnet.com/Listing/408-Trout-Gulch-Rd-Aptos-CA/41145694/",
+    "review_note": "Aptos village/retail-center setting; secondary to truly rural sites. Tax status unverified."
+  },
+  {
+    "county": "Santa Cruz",
+    "street_address": "2034 Freedom Blvd",
+    "apn_hint": "014-172-22-000",
+    "listing_url": "https://www.loopnet.com/Listing/2034-Freedom-Blvd-Freedom-CA/41426097/",
+    "review_note": "Freedom commercial corridor; rural setting unverified. Tax status unverified."
+  },
+  {
+    "county": "Santa Cruz",
+    "street_address": "2034 Freedom Blvd",
+    "apn_hint": "014-172-23-000",
+    "listing_url": "https://www.loopnet.com/Listing/2034-Freedom-Blvd-Freedom-CA/41426097/",
+    "review_note": "Freedom commercial corridor; rural setting unverified. Tax status unverified."
+  },
+  {
+    "county": "Santa Cruz",
+    "street_address": "6016 Scotts Valley Dr",
+    "apn_hint": "023-151-08-000",
+    "listing_url": "https://www.loopnet.com/Listing/6016-Scotts-Valley-Dr-Scotts-Valley-CA/42377289/",
+    "review_note": "Scotts Valley highway/commercial corridor; rural setting unverified. Tax status unverified."
+  }
+]

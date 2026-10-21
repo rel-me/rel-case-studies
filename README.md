@@ -25,3 +25,12 @@ posts new matches to the REL WhatsApp group through WhatsApp Web.
 Create the Action inside REL with the supplied [prompt](facebook-marketplace/ACTION.md).
 REL manages scheduling and browser execution; no scripts or external scheduler
 are required. Keep REL running and WhatsApp Web signed in.
+
+## Rural commercial properties with overdue taxes
+
+[Crawl LoopNet listings and Santa Cruz County tax records with REL](commercial-tax-delinquency/README.md).
+Uses the LoopNet Profile for property discovery and Datacenter for county tax
+records. Starts at the LoopNet homepage and uses native search, listing clicks and Back.
+Prioritizes rural Santa Cruz County properties at or below $2 million suited to
+a single business, verifies parcel/address matches, and separates unpaid prior
+years from historical defaults and unresolved balances.

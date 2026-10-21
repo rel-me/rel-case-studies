@@ -1,0 +1,16 @@
+[
+  {
+    "county": "Santa Cruz",
+    "street_address": "6222 Highway 9",
+    "apn_hint": "065-081-07-000",
+    "listing_url": "https://www.loopnet.com/Listing/6222-Highway-9-Felton-CA/37804837/",
+    "review_note": "Workflow validation only; rural setting and zoning not verified; not an overdue lead."
+  },
+  {
+    "county": "Santa Cruz",
+    "street_address": "13300 Big Basin Way",
+    "apn_hint": "081-083-02-000",
+    "listing_url": "https://www.loopnet.com/Listing/13300-Big-Basin-Way-Boulder-Creek-CA/36666209/",
+    "review_note": "Workflow validation only; rural setting and zoning not verified."
+  }
+]
