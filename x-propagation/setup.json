@@ -49,7 +49,7 @@
     "configuration_verified": true,
     "verified_configuration_path": "/Users/gabe/.codex/automations/study-public-x-narrative-propagation/automation.toml",
     "sample_count": 24,
-    "latest_monitor_status": "partial; 11 of 32 URLs handled; same cycle checkpointed"
+    "latest_monitor_status": "partial; 14 of 32 URLs handled; same cycle checkpointed"
   },
   "documentation": {
     "url": "https://docs.rel.me/crawlee/",
@@ -77,58 +77,46 @@
     "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00"
   },
   "last_collection_attempt": {
-    "recorded_at_utc": "2026-10-20T23:58:58.254290+00:00",
+    "recorded_at_utc": "2026-10-21T00:23:50.064059+00:00",
     "run_id": "20261020T231621-monitor",
     "cycle": "monitor",
-    "execution_started_at_utc": "2026-10-20T23:46:31.446537+00:00",
+    "execution_started_at_utc": "2026-10-21T00:16:29.309688+00:00",
     "status": "partial_monitor_browser_capture_timeouts",
     "queue": {
       "total_queued_urls": 32,
-      "handled_urls": 11,
+      "handled_urls": 14,
       "finished": false
     },
-    "monitor_observations": 154,
-    "monitor_distinct_posts_including_context": 65,
-    "execution_observations": 69,
-    "execution_distinct_posts_including_context": 30,
+    "monitor_observations": 190,
+    "monitor_distinct_posts_including_context": 83,
+    "execution_observations": 36,
+    "execution_distinct_posts_including_context": 18,
     "new_post_ids_not_previously_observed": [
-      "2112665652700082297",
-      "2109940202869317831",
-      "2112616322169213297",
-      "2112690638005424194",
-      "2112689570835808630",
-      "2112686817262866916",
-      "2112686088460370291",
-      "2112682092903407942",
-      "2112681813244338481",
-      "2112681324788002864",
-      "2112681847272669192",
-      "2112675821861130491"
+      "2112686091291492792"
     ],
     "execution_failures": [
       {
-        "url": "https://x.com/MarkMeadows",
+        "url": "https://x.com/DineshDSouza",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
         "stage": "page_down_after_capture_0"
       },
       {
-        "url": "https://x.com/JackPosobiec",
+        "url": "https://x.com/w_terrence",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
         "stage": "page_down_after_capture_0"
       },
       {
-        "url": "https://x.com/EndWokeness",
+        "url": "https://x.com/BrandonStraka",
         "error": "Timed out waiting for embedded Chromium after 30.0 seconds",
-        "stage": "page_down_after_capture_1"
+        "stage": "page_down_after_capture_0"
       }
     ],
     "execution_successful_visits": [
-      "https://x.com/RichardGrenell",
-      "https://x.com/GuntherEagleman",
-      "https://x.com/catturd2",
-      "https://x.com/DC_Draino"
+      "https://x.com/libsoftiktok",
+      "https://x.com/johnrich",
+      "https://x.com/ScottPresler"
     ],
-    "log": "data/logs/wakeup-20261020T234602.log",
+    "log": "data/logs/wakeup-20261021T001602.log",
     "next_action": "Resume the same active monitor cycle at next wakeup; no overlapping collectors or repeated historical searches",
     "new_selected_episode_edges": 0,
     "historical_searches_this_execution": 0,
@@ -143,10 +131,10 @@
     "number": 10,
     "repository": "rel-me/rel-case-studies",
     "worktree": "/Users/gabe/projects.next/rel-case-studies-x-propagation-pr",
-    "requested_by_user": "Create a branch and PR; commit and push changes when applicable; in a sub-agent, monitor the PR and fix issues as they arise.",
-    "monitoring_instruction": "On subsequent scheduled wakeups, use a sub-agent to inspect PR checks, reviews and inline comments and fix actionable study issues in the isolated worktree, validating, committing and pushing when applicable. Parent owns collector, REL session and setup metadata. Preserve study scope/deadline and unrelated work; never merge without authorization. Sync reviewed study changes only; exclude captures, runtime data and environment.",
-    "last_checked_at_utc": "2026-10-20T23:58:49Z",
-    "last_observed_status": "Sub-agent check on d3486ae: OPEN; no checks, reviews, issue comments or inline comments",
+    "requested_by_user": "Create a branch and PR; commit and push changes when applicable; in a sub-agent monitor the PR and fix failures; after a PR changes following a successful run, monitor again in a sub-agent.",
+    "monitoring_instruction": "On subsequent scheduled wakeups, use a sub-agent to inspect PR checks, reviews and inline comments and fix actionable study issues in the isolated worktree, validating, committing and pushing when applicable. Parent owns collector, REL session and setup metadata. Preserve study scope/deadline and unrelated work; never merge without authorization. Sync reviewed study changes only; exclude captures, runtime data and environment. After any push following a successful validation/check, request a fresh sub-agent PR check on the pushed head before finishing.",
+    "last_checked_at_utc": "2026-10-21T00:16:14Z",
+    "last_observed_status": "Sub-agent check on af01b01: OPEN; no checks, reviews, issue comments or inline comments",
     "validation": "15 offline extraction, queue, export, deadline and execution-limit tests passed in isolated worktree"
   },
   "execution_limit": {
