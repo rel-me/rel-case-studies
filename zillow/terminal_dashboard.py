@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""Read-only terminal dashboard for the Zillow and county-tax crawlers (stdlib only)."""
+"""Terminal dashboard with confirmed controls for the Zillow and county-tax crawlers."""
 import argparse
 from collections import deque
 from contextlib import closing
+from concurrent.futures import ThreadPoolExecutor
 import curses
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +17,8 @@ import subprocess
 import sys
 import time
 import unicodedata
+
+from crawl_controls import control_worker, check_safety, read_state, WORKERS, reap_children
 
 ANSI = re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 SOURCES = {
@@ -123,6 +126,7 @@ class Monitor:
             ('zillow-crawl.log','ZILLOW'),('zillow-runner.log','ZILLOW'),('county-tax.log','TAX'))]
 
     def poll(self):
+        reap_children()
         incoming=[]
         try:
             with closing(sqlite3.connect(self.database.resolve().as_uri()+'?mode=ro',uri=True,timeout=0.25)) as db:
@@ -173,13 +177,13 @@ def matching(event,worker,kind):
     return (worker=='ALL' or event.worker==worker) and (kind=='ALL' or event.kind==kind)
 
 
-def draw(screen, monitor, worker, kind, paused, offset, horizontal):
+def draw(screen, monitor, worker, kind, paused, offset, horizontal, notice='', read_only=False):
     screen.erase(); height,width=screen.getmaxyx()
     def put(y,text,attr=0):
         if y>=height or width<2: return
         try: screen.addnstr(y,0,display_text(text),width-1,attr)
         except curses.error: pass
-    put(0,'SANTA CRUZ CRAWLS  |  READ ONLY  |  '+datetime.now().astimezone().strftime('%H:%M:%S %Z'),curses.A_BOLD)
+    put(0,'SANTA CRUZ CRAWLS  |  '+('READ ONLY' if read_only else 'MONITOR + CONTROLS')+'  |  '+datetime.now().astimezone().strftime('%H:%M:%S %Z'),curses.A_BOLD)
     for row,who in enumerate(('ZILLOW','TAX'),1):
         state,streak,reason=monitor.worker_statuses.get(who,('UNKNOWN',0,'')); s=monitor.stats.get(who,{})
         put(row*2-1,f"{who:6} {state:11}  done {s.get('done',0):,}  left {s.get('pending',0):,}  saved {s.get('captures',0):,}  errors {s.get('errors',0):,}  streak {streak}",curses.A_BOLD)
@@ -191,40 +195,73 @@ def draw(screen, monitor, worker, kind, paused, offset, horizontal):
     for y,event in enumerate(filtered[start:end],6):
         attr=curses.color_pair(1) if event.kind=='ERROR' and curses.has_colors() else 0
         put(y,event.line()[horizontal:],attr)
-    put(height-3,monitor.warning or 'Long lines are clipped, never wrapped. Left/right scroll; --plain prints full lines.')
+    put(height-3,notice or monitor.warning or 'Long lines are clipped, never wrapped. Left/right scroll; --plain prints full lines.')
     put(height-2,'q quit | space pause | 1 all / 2 Zillow / 3 tax | e errors / s saves / a both')
-    put(height-1,'Up/PgUp older | Down/PgDn newer | End live | Left/Right horizontal scroll')
+    put(height-1,('Read-only | ' if read_only else 'z start/restart Zillow | t start/restart tax | ')+'Arrows/PgUp/PgDn scroll | End live')
     screen.refresh()
     return offset
 
 
-def app(screen,monitor,interval):
+def app(screen,monitor,interval,read_only=False):
     try: curses.curs_set(0)
     except curses.error: pass
     screen.keypad(True);screen.timeout(100)
     if curses.has_colors():
         curses.start_color();curses.use_default_colors();curses.init_pair(1,curses.COLOR_RED,-1)
     worker=kind='ALL';paused=False;offset=horizontal=0;due=0
-    while True:
-        if time.monotonic()>=due:
-            incoming=monitor.poll()
-            if offset and not paused: offset+=sum(matching(event,worker,kind) for event in incoming)
-            due=time.monotonic()+interval
-        if not paused: offset=draw(screen,monitor,worker,kind,False,offset,horizontal)
-        key=screen.getch()
-        if key in (ord('q'),27): return
-        if key==ord(' '):
-            paused=not paused
-            if paused: draw(screen,monitor,worker,kind,True,offset,horizontal)
-        elif key in (ord('1'),ord('2'),ord('3')): worker={ord('1'):'ALL',ord('2'):'ZILLOW',ord('3'):'TAX'}[key];offset=0;paused=False
-        elif key in (ord('e'),ord('s'),ord('a')): kind={ord('e'):'ERROR',ord('s'):'SAVED',ord('a'):'ALL'}[key];offset=0;paused=False
-        elif key in (curses.KEY_UP,curses.KEY_PPAGE): offset+=1 if key==curses.KEY_UP else max(1,screen.getmaxyx()[0]-9)
-        elif key in (curses.KEY_DOWN,curses.KEY_NPAGE): offset=max(0,offset-(1 if key==curses.KEY_DOWN else max(1,screen.getmaxyx()[0]-9)))
-        elif key==curses.KEY_END: offset=0;paused=False
-        elif key==curses.KEY_RIGHT: horizontal+=20
-        elif key==curses.KEY_LEFT: horizontal=max(0,horizontal-20)
-        elif key==curses.KEY_RESIZE: paused=False
-        # Pausing freezes rendering only. Polling continues to retain live events.
+    notice='';confirmation=None;future=None
+    executor=ThreadPoolExecutor(max_workers=1)
+    try:
+        while True:
+            if future and future.done():
+                try: notice=future.result();event_kind='INFO'
+                except Exception as error: notice='Control refused/failed: '+clean(error);event_kind='ERROR'
+                monitor.events.append(Event(datetime.now().astimezone().isoformat(),'CTRL',event_kind,notice))
+                future=None;due=0
+            if time.monotonic()>=due:
+                incoming=monitor.poll()
+                if offset and not paused: offset+=sum(matching(event,worker,kind) for event in incoming)
+                due=time.monotonic()+interval
+            if not paused: offset=draw(screen,monitor,worker,kind,False,offset,horizontal,notice,read_only)
+            key=screen.getch()
+            if confirmation:
+                if key in (ord('y'),ord('Y')):
+                    who=confirmation;confirmation=None;paused=False
+                    future=executor.submit(control_worker,monitor.output,monitor.database,who)
+                    notice=who+' control in progress; waiting for a clean stop and free queue lock...'
+                elif key!=-1:
+                    confirmation=None;notice='Control cancelled.';paused=False
+                continue
+            if key in (ord('q'),27):
+                if future: notice='A control action is still finishing; wait before quitting.';paused=False
+                else: return
+            if key in (ord('z'),ord('t')):
+                paused=False
+                if read_only: notice='Controls disabled by --read-only.'
+                elif future: notice='Another control action is still in progress.'
+                else:
+                    who='ZILLOW' if key==ord('z') else 'TAX'
+                    try:
+                        run_name,_,progress_name,*_=WORKERS[who]
+                        check_safety(read_state(monitor.output/run_name),read_state(monitor.output/progress_name))
+                        state=monitor.status(who)[0]
+                        notice=('Restart' if state in ('RUNNING','STARTING') else 'Start')+' '+who+' using its saved command? [y/N]'
+                        confirmation=who
+                    except Exception as error: notice='Control refused: '+clean(error)
+            elif key==ord(' '):
+                paused=not paused
+                if paused: draw(screen,monitor,worker,kind,True,offset,horizontal,notice,read_only)
+            elif key in (ord('1'),ord('2'),ord('3')): worker={ord('1'):'ALL',ord('2'):'ZILLOW',ord('3'):'TAX'}[key];offset=0;paused=False
+            elif key in (ord('e'),ord('s'),ord('a')): kind={ord('e'):'ERROR',ord('s'):'SAVED',ord('a'):'ALL'}[key];offset=0;paused=False
+            elif key in (curses.KEY_UP,curses.KEY_PPAGE): offset+=1 if key==curses.KEY_UP else max(1,screen.getmaxyx()[0]-9)
+            elif key in (curses.KEY_DOWN,curses.KEY_NPAGE): offset=max(0,offset-(1 if key==curses.KEY_DOWN else max(1,screen.getmaxyx()[0]-9)))
+            elif key==curses.KEY_END: offset=0;paused=False
+            elif key==curses.KEY_RIGHT: horizontal+=20
+            elif key==curses.KEY_LEFT: horizontal=max(0,horizontal-20)
+            elif key==curses.KEY_RESIZE: paused=False
+            # Pausing freezes rendering only. Polling continues to retain events.
+    finally:
+        executor.shutdown(wait=False,cancel_futures=True)
 
 
 def default_output():
@@ -240,6 +277,7 @@ def main(argv=None):
     parser.add_argument('--interval',type=float,default=2,help='Poll interval in seconds (default 2)')
     parser.add_argument('--history',type=int,default=60,help='Initial recent records per event table (default 60)')
     parser.add_argument('--plain',action='store_true',help='Full one-line events suitable for piping to a log')
+    parser.add_argument('--read-only',action='store_true',help='Disable interactive start/restart controls')
     parser.add_argument('--once',action='store_true',help='Print statuses and recent events, then exit')
     args=parser.parse_args(argv)
     if args.interval<0.2 or args.history<0 or args.history>5000: parser.error('interval must be >=0.2 and history must be between 0 and 5000')
@@ -258,7 +296,7 @@ def main(argv=None):
                 if monitor.warning: print('# '+monitor.warning,file=sys.stderr,flush=True)
                 if args.once: return 1 if monitor.warning else 0
                 time.sleep(args.interval)
-        else: curses.wrapper(app,monitor,args.interval)
+        else: curses.wrapper(app,monitor,args.interval,args.read_only)
     except (KeyboardInterrupt,BrokenPipeError): return 0
     except curses.error as error:
         print('Terminal unavailable; run with --plain: '+clean(error),file=sys.stderr);return 1

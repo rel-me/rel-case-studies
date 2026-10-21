@@ -151,11 +151,29 @@ saved pages, database error totals, failure streaks, and saved stop reasons. The
 live feed includes every newly saved URL and database error. Startup exceptions
 and ERROR/CRITICAL/FATAL lines from the crawler logs are shown too, marked
 `[log:filename]`; these diagnostics may also describe an error saved in SQLite.
-Log timestamps unavailable in historical output display as `--:--:--`; new log
+Historical log entries without timestamps display as `-- --:--:--`; new log
 errors use their observation time. ANSI escapes, control characters, and line
 breaks are removed so each event occupies one terminal line.
 
-Keys: `q` quits, Space freezes/resumes the view, `1/2/3` filter all/Zillow/tax,
+Press `z` for Zillow or `t` for tax, then `y` to confirm a start/restart. Any
+other key cancels. A stopped crawler launches its saved command; an active one
+receives SIGINT and must exit and release its queue lock before a replacement
+starts. Zillow's child is interrupted first so its launcher keeps the lock until
+shutdown completes. The monitor stays responsive during the action, reports
+failures in its notice/feed, and never force-kills an unresponsive worker. If
+shutdown takes more than 45 seconds, no replacement is started; wait for the old
+worker to exit before trying again. Quit is deferred while a confirmed action
+finishes. Workers run independently of the monitor after startup.
+
+Controls preserve the configured profiles, sessions, queue paths, priorities,
+limits, captures, saved terminal failures, and persisted failure streaks. They
+refuse maintenance, saved safety/access stops, eleven consecutive failures,
+exhausted queues, conflicting locks, unrelated PIDs, and retry/rotation commands.
+These controls do not clear a safety stop; it must be resolved separately. Both
+the web dashboard and terminal controls share `dashboard-restart.lock` to avoid
+simultaneous starts. Run `--read-only` to disable interactive controls.
+
+Other keys: `q` quits, Space freezes/resumes the view, `1/2/3` filter all/Zillow/tax,
 `e/s/a` filter errors/saves/both, arrows and PageUp/PageDown scroll, End follows
 the live tail, and left/right reveal long lines. The display retains 5,000 events
 and initially reads the latest 60 records per table (`--history N` changes that).
@@ -164,10 +182,7 @@ are drained in bounded batches without skipping IDs.
 
 Use `./monitor.sh --plain` for complete, unwrapped event lines suitable for a pipe
 or `tee`. Use `./monitor.sh --once --history 10` for one status snapshot and recent
-events. Noninteractive output automatically selects plain mode. Missing/busy
-databases are reported and retried; the monitor never creates a database.
-
-This monitor is read-only. It never starts, stops, or restarts a crawler, clears a
-safety stop, navigates REL, retries failed resources, or edits a queue. Quitting
-leaves both crawlers alone. Output contains private crawl URLs and errors; keep
-terminal recordings and redirected logs private.
+events. Noninteractive output automatically selects plain mode. These modes have
+no controls. Missing/busy databases are reported and retried; the monitor never
+creates a database. Quitting does not stop either crawler. Output contains private
+crawl URLs and errors; keep terminal recordings and redirected logs private.
