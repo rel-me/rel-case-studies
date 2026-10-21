@@ -1,5 +1,5 @@
 {
-  "status": "baseline_completed_monitor_completed_with_coverage_gaps",
+  "status": "session_unavailable_user_restoration_required",
   "seed_accounts": [
     "nicksortor",
     "SaraGonzalesTX",
@@ -49,7 +49,7 @@
     "configuration_verified": true,
     "verified_configuration_path": "/Users/gabe/.codex/automations/study-public-x-narrative-propagation/automation.toml",
     "sample_count": 24,
-    "latest_monitor_status": "completed with coverage gaps; 32 of 32 URLs handled; new monitor next wakeup"
+    "latest_monitor_status": "24 terminal session-not-found failures; zero posts; existing session restoration required"
   },
   "documentation": {
     "url": "https://docs.rel.me/crawlee/",
@@ -77,163 +77,153 @@
     "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00"
   },
   "last_collection_attempt": {
-    "recorded_at_utc": "2026-10-21T00:47:29.426319+00:00",
-    "run_id": "20261020T231621-monitor",
+    "recorded_at_utc": "2026-10-21T01:16:33.607679+00:00",
+    "run_id": "20261021T011628-monitor",
     "cycle": "monitor",
-    "execution_started_at_utc": "2026-10-21T00:46:20.070875+00:00",
-    "status": "monitor_completed_with_coverage_gaps",
+    "execution_started_at_utc": "2026-10-21T01:16:28.338565+00:00",
+    "status": "monitor_terminal_session_unavailable",
     "queue": {
-      "total_queued_urls": 32,
-      "handled_urls": 32,
+      "total_queued_urls": 24,
+      "handled_urls": 24,
       "finished": true
     },
-    "monitor_observations": 202,
-    "monitor_distinct_posts_including_context": 87,
-    "execution_observations": 12,
-    "execution_distinct_posts_including_context": 4,
-    "new_post_ids_not_previously_observed": [
-      "2112682294695608593"
-    ],
+    "monitor_observations": 0,
+    "monitor_distinct_posts_including_context": 0,
+    "execution_observations": 0,
+    "execution_distinct_posts_including_context": 0,
+    "new_post_ids_not_previously_observed": [],
     "execution_failures": [
       {
-        "url": "https://x.com/nicksortor/status/2112661743386177888",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: Remote end closed connection without response",
-        "stage": "navigation"
-      },
-      {
-        "url": "https://x.com/RheinAmacher/status/2102905595544342571",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
-      },
-      {
-        "url": "https://x.com/RheinAmacher/status/2112596703178359132",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
-      },
-      {
-        "url": "https://x.com/RheinAmacher",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "url": "https://x.com/nicksortor",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
-        "url": "https://x.com/mattvanswol/status/2112671274073813363",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
+        "url": "https://x.com/SaraGonzalesTX",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
       },
       {
-        "url": "https://x.com/EricLDaugh/status/2112139211008577754",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
+        "url": "https://x.com/CarolineWren",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
       },
       {
-        "url": "https://x.com/EricLDaugh/status/2112684666054385836",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
+        "url": "https://x.com/RheinAmacher",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
       },
       {
-        "url": "https://x.com/bennyjohnson/status/2110749015717359949",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
+        "url": "https://x.com/mattvanswol",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
       },
       {
-        "url": "https://x.com/bennyjohnson/status/2112649907547054233",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "navigation"
+        "url": "https://x.com/EricLDaugh",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/bennyjohnson",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/spencerpratt",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/LauraLoomer",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/elonmusk",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/RichardGrenell",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/GuntherEagleman",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/MarkMeadows",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/JackPosobiec",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/catturd2",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/DC_Draino",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/EndWokeness",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/libsoftiktok",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/johnrich",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
+        "stage": "retries_exhausted"
+      },
+      {
+        "url": "https://x.com/ScottPresler",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/DineshDSouza",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/w_terrence",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
         "url": "https://x.com/BrandonStraka",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       },
       {
-        "url": "https://x.com/nicksortor/status/2112661743386177888",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/RheinAmacher/status/2102905595544342571",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/RheinAmacher/status/2112596703178359132",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/mattvanswol/status/2112671274073813363",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/EricLDaugh/status/2112139211008577754",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/EricLDaugh/status/2112684666054385836",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/bennyjohnson/status/2110749015717359949",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
-        "stage": "retries_exhausted"
-      },
-      {
-        "url": "https://x.com/bennyjohnson/status/2112649907547054233",
-        "error": "Could not reach REL at http://127.0.0.1:17319/v1: <urlopen error [Errno 61] Connection refused>",
+        "url": "https://x.com/DonaldJTrumpJr",
+        "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       }
     ],
-    "execution_successful_visits": [
-      "https://x.com/DonaldJTrumpJr"
-    ],
-    "log": "data/logs/wakeup-20261021T004602.log",
-    "next_action": "Start a new monitor cycle at next wakeup",
+    "execution_successful_visits": [],
+    "log": "data/logs/wakeup-20261021T011602.log",
+    "next_action": "Existing authenticated Session16781 requires restoration. Preserve terminal failures and original deadline; do not substitute sessions.",
     "new_selected_episode_edges": 0,
     "historical_searches_this_execution": 0,
     "one_hop_searches_this_execution": 0,
     "baseline_completed_at_utc": "2026-10-20T11:10:51.844438+00:00",
     "monitor_ends_at_utc": "2026-11-03T06:49:49.935919+00:00",
-    "execution_exhausted_urls": 17,
-    "service_diagnostic": "data/wakeups/20261021T004602-rel-status.json",
-    "access_gap_note": "REL transport failed during collection. Supported status after exit reported all four services running; cause and authentication state not established. Terminal failures preserved; next scheduled monitor uses its ordinary bounded queue."
+    "execution_exhausted_urls": 24,
+    "service_diagnostic": "data/wakeups/20261021T011602-session-diagnostic.json"
   },
   "baseline_completed_at_utc": "2026-10-20T11:10:51.844438+00:00",
   "development_workflow": {
@@ -244,9 +234,9 @@
     "worktree": "/Users/gabe/projects.next/rel-case-studies-x-propagation-pr",
     "requested_by_user": "Create a branch and PR; commit and push changes when applicable; in a sub-agent monitor the PR and fix failures; after a PR changes following a successful run, monitor again in a sub-agent.",
     "monitoring_instruction": "On subsequent scheduled wakeups, use a sub-agent to inspect PR checks, reviews and inline comments and fix actionable study issues in the isolated worktree, validating, committing and pushing when applicable. Parent owns collector, REL session and setup metadata. Preserve study scope/deadline and unrelated work; never merge without authorization. Sync reviewed study changes only; exclude captures, runtime data and environment. After any push following a successful validation/check, request a fresh sub-agent PR check on the pushed head before finishing.",
-    "last_checked_at_utc": "2026-10-21T00:50:18Z",
-    "last_observed_status": "Sub-agent check on d522c027c9b3f6946e4fc86a780cc9db9880cbc4: OPEN; no checks, reviews, issue comments or inline comments",
-    "validation": "17 offline extraction, queue, export, deadline, execution-limit and REL service-failure checks passed in isolated worktree"
+    "last_checked_at_utc": "2026-10-21T01:17:40Z",
+    "last_observed_status": "Sub-agent check on ea9626bc98a18a9e7e554f6efd495dff42f66018: OPEN; no checks, reviews or comments",
+    "validation": "19 offline extraction, queue, export, deadline, execution-limit, transport and missing-session tests passed in isolated worktree; four service-failure checks rerun clean after test fixture cleanup"
   },
   "execution_limit": {
     "seconds": 1200,
@@ -267,5 +257,13 @@
     "coverage": "REL transport SDK errors, embedded Chromium timeout and UPSTREAM_UNAVAILABLE on retry or final allowed attempt",
     "on_limit": "Stop dispatch, export exact errors, preserve pending requests; already exhausted URLs stay terminal",
     "applies_from": "Executions after the 2026-10-21T00:46:02Z wakeup"
+  },
+  "session_recovery": {
+    "session_id": "Session16781",
+    "status": "not_found_by_collector",
+    "diagnostic_record": "data/wakeups/20261021T011602-session-diagnostic.json",
+    "required_action": "Restore the existing authenticated Session16781 in REL. If it cannot be restored, user must identify and authorize a replacement before configuration changes.",
+    "configuration_unchanged": true,
+    "immediate_stop_commit": "ea9626bc98a18a9e7e554f6efd495dff42f66018"
   }
 }
