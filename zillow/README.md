@@ -187,3 +187,27 @@ events. Noninteractive output automatically selects plain mode. These modes have
 no controls. Missing/busy databases are reported and retried; the monitor never
 creates a database. Quitting does not stop either crawler. Output contains private
 crawl URLs and errors; keep terminal recordings and redirected logs private.
+
+### Private web dashboard and restart diagnostics
+
+Run `python3 dashboard.py --database /absolute/path/to/output/zillow.sqlite3`
+(with `--tax-database`, `--tax-run-file`, and `--county-inventory` for county data).
+The dashboard binds only to `127.0.0.1:8787`; keep it and all crawl data private.
+It displays independent crawler status cards, remaining work by geographic area,
+and saved property estimates/assessments. These private files are not public-site
+assets and must not be deployed with the study Worker.
+
+Each restart shows a persistent progress panel: elapsed time, PID, exit code,
+new saved-page count, latest saved URL, observed startup stage, and a bounded
+recent-log excerpt. A fast `/api/restart-status` poll updates the panels every two
+seconds without rerunning the full property report. Startup exceptions that occur
+before a resource handler runs are displayed as final errors directly on the
+worker card and survive a reload. A normal property-data refresh cannot clear them.
+
+New dashboard restart attempts store log offsets and the saved-capture baseline
+in `zillow-restart-status.json` or `tax-restart-status.json` in the private output.
+Those diagnostic sidecars are separate from the worker's persisted safety
+checkpoint. Existing CLI/terminal attempts without sidecars use run timestamps
+and bounded log tails. Stages reflect observed log messages; no estimated progress
+percentage or guaranteed startup deadline is shown. Log excerpts are capped at
+12 lines, and SQL reads exclude HTML/capture bodies.
