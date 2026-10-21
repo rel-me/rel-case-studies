@@ -81,7 +81,7 @@ def log_lines(output,worker,attempt,start):
                 if stat.st_mtime<seconds(start): continue
                 checkpoint=attempt.get('logs',{}).get(name,{})
                 offset=checkpoint.get('offset',0) if checkpoint.get('inode')==stat.st_ino else 0
-                offset=min(offset,stat.st_size)
+                if stat.st_size<offset: offset=0
                 stream.seek(max(offset,stat.st_size-131072))
                 data=stream.read(131072).decode('utf-8','replace')
                 # Legacy run JSON has no offsets. The final exception is retained;
@@ -102,11 +102,15 @@ def describe(output,worker,database,run,progress,alive,queue_locked):
     captures=capture_data(database,worker,attempt.get('baseline'),started)
     lines=log_lines(output,worker,attempt,started)
     errors=[line for line in lines if re.search(r'^(?:[\w.]+(?:Error|Exception)|Cannot start crawl):',line)]
-    error=attempt.get('error') or captures['resource_error'] or (errors[-1] if errors else None) or progress.get('stop_reason')
+    error=attempt.get('error') or progress.get('stop_reason') or captures['resource_error'] or (errors[-1] if errors else None)
     active=alive or queue_locked
     same_run=not attempt or attempt.get('pid')==run.get('pid')
     code=run.get('exit_code') if not active and same_run else None
-    failed=not active and bool(error or code not in (None,0,130) or (code is None and not captures['saved']))
+    # Recoverable resource errors remain useful diagnostics after a clean exit,
+    # but are not the final reason that a completed/interrupted worker stopped.
+    explicit_failure=attempt.get('error') or progress.get('stop_reason')
+    failed=not active and bool(explicit_failure or code not in (None,0,130)
+                              or (code is None and (error or not captures['saved'])))
     stage='launching';message='Starting saved launcher and waiting for REL readiness.'
     queue_total=None
     if any('Running Zillow crawl through' in line for line in lines):

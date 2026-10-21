@@ -98,6 +98,28 @@ class StartupTests(unittest.TestCase):
         status=self.describe()
         self.assertEqual(status['error'],'RuntimeError: new startup error')
 
+    def test_truncated_log_reads_new_output_before_previous_offset(self):
+        self.append('zillow-crawl.log','old output '*1000)
+        startup.begin(self.output,'zillow',self.db)
+        (self.output/'zillow-crawl.log').write_text('RuntimeError: new startup error\n')
+        self.assertEqual(self.describe()['error'],'RuntimeError: new startup error')
+
+    def test_recovered_resource_error_does_not_turn_clean_exit_into_failure(self):
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute('INSERT INTO crawl_errors VALUES(2,?,?)',(self.started.isoformat(),'temporary resource failure'))
+            db.execute('INSERT INTO captures VALUES(2,?,?)',(self.started.isoformat(),'https://www.zillow.com/new'))
+            db.commit()
+        for code in (0,130):
+            with self.subTest(exit_code=code):
+                run=dict(self.run,exit_code=code)
+                status=self.describe(run=run)
+                self.assertEqual(status['phase'],'stopped')
+                self.assertEqual(status['error'],'temporary resource failure')
+        status=startup.describe(self.output,'zillow',self.db,dict(self.run,exit_code=0),
+                                {'stop_reason':'Eleven consecutive failures'},False,False)
+        self.assertEqual(status['phase'],'failed')
+        self.assertEqual(status['error'],'Eleven consecutive failures')
+
     def test_old_results_cannot_overwrite_new_attempt(self):
         old=startup.begin(self.output,'zillow',self.db);new=startup.begin(self.output,'zillow',self.db)
         startup.result(self.output,'zillow',old,error='stale response')
