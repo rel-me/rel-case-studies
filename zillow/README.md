@@ -16,8 +16,11 @@ Install `/Applications/REL.app` and configure the **OxylabsDatacenter** Profile:
 The first run imports GIS data if no inventory exists. The launcher checks
 Release health and prevents overlapping crawls. It creates a session once,
 saves its ID in `output/session.json`, then reuses it across requests, retries,
-and restarts. Requests are serial; the session stays open afterward. Missing
-saved sessions fail explicitly instead of silently replacing browser state.
+and restarts. Requests are serial; the session stays open afterward. When a saved session is missing, the profile-session resolver creates a new tab
+using the configured Profile and lets REL select or create its group. It saves
+the returned session/group IDs for reuse. Existing live sessions are validated
+and reused; unrelated tabs are never adopted. Queues, captures, and failure
+checkpoints are preserved. Access restrictions and safety stops still apply.
 
 Default limits are 50 verified home details and a 500-request safety limit,
 including address searches. Navigation allows 60 seconds. Transient browser
