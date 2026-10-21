@@ -163,6 +163,14 @@ class ExecutionLimitReached(TimeoutError):
     pass
 
 
+def is_rel_readiness_failure(error):
+    message = str(error)
+    return any(signal in message for signal in (
+        'Timed out waiting for embedded Chromium', 'UPSTREAM_UNAVAILABLE',
+        'Could not reach REL at ',
+    ))
+
+
 async def run_before_deadline(crawler, requests, deadline, execution_timeout_seconds=1200):
     # Request timeouts do not cover time spent waiting for Crawlee's resource
     # gate to dispatch work. Bound the whole execution and await its cleanup.
@@ -295,6 +303,15 @@ async def collect(args):
             db.execute('INSERT INTO coverage VALUES(?,?,?,?,?,?)',
                        (run_id, context.request.unique_key, now(), context.request.url, status, detail))
 
+    def service_failure(context, error):
+        nonlocal readiness_failures
+        if not is_rel_readiness_failure(error):
+            return
+        readiness_failures += 1
+        if readiness_failures == 3:
+            coverage(context, 'cycle_stopped_rel_unavailable', str(error))
+            crawler.stop(reason='Three REL transport or browser readiness failures in this execution; retain queue for the next scheduled run')
+
     @crawler.router.default_handler
     async def handler(context):
         kind = context.request.user_data.get('kind', 'detail')
@@ -349,20 +366,17 @@ async def collect(args):
 
     @crawler.error_handler
     async def attempt_failed(context, error):
-        nonlocal readiness_failures
         message = str(error)
         coverage(context, 'attempt_failed', json.dumps({'error': message,
                  'stage': context.request.user_data.get('_collector_stage', 'navigation')}))
         context.request.user_data['_collector_stage'] = 'navigation'
-        if 'Timed out waiting for embedded Chromium' in message or 'UPSTREAM_UNAVAILABLE' in message:
-            readiness_failures += 1
-        if readiness_failures >= 3:
-            coverage(context, 'cycle_stopped_browser_timeouts', message)
-            crawler.stop(reason='Three browser readiness failures in this execution; retain queue for the next scheduled run')
+        service_failure(context, error)
 
     @crawler.failed_request_handler
     async def failed(context, error):
         coverage(context, 'retries_exhausted', str(error))
+        # Crawlee calls this instead of error_handler on the final attempt.
+        service_failure(context, error)
 
     # A handler can persist a detail checkpoint before Crawlee flushes its
     # deferred enqueue. Re-submit saved details on resume; queue deduplication

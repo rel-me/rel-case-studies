@@ -187,5 +187,80 @@ class DeadlineTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(crawler.cleaned_up)
 
 
+class ServiceFailureTests(unittest.IsolatedAsyncioTestCase):
+    def test_only_rel_service_errors_are_readiness_failures(self):
+        for message in ('Timed out waiting for embedded Chromium after 30.0 seconds',
+                        'UPSTREAM_UNAVAILABLE',
+                        'Could not reach REL at http://127.0.0.1:17319/v1: Connection refused',
+                        'Could not reach REL at http://127.0.0.1:17319/v1: Remote end closed connection without response'):
+            self.assertTrue(collector.is_rel_readiness_failure(RuntimeError(message)))
+        for message in ('Target post missing', 'Connection refused by unrelated service',
+                        'Request handler timed out after 150 seconds'):
+            self.assertFalse(collector.is_rel_readiness_failure(RuntimeError(message)))
+
+    async def test_three_retry_or_final_service_failures_stop_and_preserve_pending_cycle(self):
+        errors = [
+            'Could not reach REL at http://127.0.0.1:17319/v1: Connection refused',
+            'Timed out waiting for embedded Chromium after 30.0 seconds',
+            'Could not reach REL at http://127.0.0.1:17319/v1: Remote end closed connection without response',
+        ]
+        crawlers = []
+
+        class FakeCrawler:
+            def __init__(self, **kwargs):
+                self.router = SimpleNamespace(default_handler=lambda handler: handler)
+                self.stopped = False
+                self.dispatched = []
+                self.pending = []
+                crawlers.append(self)
+
+            def error_handler(self, handler):
+                self.retry_handler = handler
+                return handler
+
+            def failed_request_handler(self, handler):
+                self.final_handler = handler
+                return handler
+
+            def stop(self, **kwargs):
+                self.stopped = True
+
+            async def run(self, requests):
+                self.pending = list(requests)
+                for handler, message in zip((self.final_handler, self.retry_handler, self.final_handler), errors):
+                    request = self.pending.pop(0)
+                    self.dispatched.append(request.url)
+                    await handler(SimpleNamespace(request=request), RuntimeError(message))
+                    if self.stopped:
+                        return
+                raise AssertionError('Collector did not stop after three service failures')
+
+        state = {'pilot_verified': True,
+                 'monitor_started_at_utc': datetime.now(timezone.utc).isoformat(),
+                 'monitor_ends_at_utc': (datetime.now(timezone.utc) + timedelta(days=14)).isoformat(),
+                 'baseline_completed_at_utc': 'preserved',
+                 'active_run': {'id': '20261021T004601-monitor', 'cycle': 'monitor'}}
+        config = json.loads(Path(__file__).with_name('config.json').read_text())
+        queue = AsyncMock()
+        queue.is_finished.return_value = False
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            (root / 'data').mkdir()
+            (root / 'data/checkpoint.json').write_text(json.dumps(state))
+            with patch.object(collector, 'ROOT', root), patch.object(collector, 'CONFIG', config, create=True), \
+                    patch.object(collector, 'RelCrawler', FakeCrawler), \
+                    patch.object(collector.RequestQueue, 'open', AsyncMock(return_value=queue)):
+                with self.assertRaisesRegex(SystemExit, 'Cycle interrupted'):
+                    await collector.collect(SimpleNamespace(cycle='monitor'))
+            self.assertEqual(json.loads((root / 'data/checkpoint.json').read_text()), state)
+            rows = [json.loads(line) for line in (root / 'data/exports/coverage.jsonl').read_text().splitlines()]
+            self.assertEqual([r['detail'] if r['status'] == 'retries_exhausted'
+                              else json.loads(r['detail'])['error'] for r in rows[:3]], errors)
+            self.assertEqual(rows[3]['status'], 'cycle_stopped_rel_unavailable')
+        self.assertEqual(len(crawlers[0].dispatched), 3)
+        self.assertEqual(len(crawlers[0].pending), len(config['seeds']) - 3)
+        queue.is_finished.assert_awaited_once()
+
+
 if __name__ == '__main__':
     unittest.main()

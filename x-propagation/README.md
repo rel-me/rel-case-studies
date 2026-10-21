@@ -183,6 +183,10 @@ work under resource pressure. At that limit the crawler is cancelled and its
 cleanup awaited, existing observations are exported, and any unfinished queue
 remains checkpointed for the next wakeup. This does not reset URL or retry
 budgets, mark an unfinished cycle complete, or extend the study deadline.
+Three REL transport or browser readiness failures also stop an execution,
+including failures on a URL's final allowed attempt. The coverage log retains
+the original errors; URLs already exhausted stay terminal, while pending URLs
+remain available for the next wakeup.
 The monitor window starts on its first run and stops collection after 14 days.
 The final report still requires evidence review; it must not be labeled complete
 merely because a timestamp has elapsed.
