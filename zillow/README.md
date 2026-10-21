@@ -130,11 +130,12 @@ After an existing crawler stops, migrate saved data without starting a crawl:
 ./zillow/run.sh migrate
 ```
 
-This command refuses to run while the crawler owns `output/run.lock`. It creates
+This command refuses to run while Zillow owns `output/zillow-run.lock` or a
+county tax/inventory crawler owns `output/run.lock`. It creates
 a complete SQLite backup alongside the database, backfills units and bathroom
 evidence from saved captures, renames `asking_price` to `price`, and normalizes
 unknown prices. Changes are transactional and rerunning is safe. `run.sh`
-also applies the migration under the same lock before starting its next crawl.
+also applies the migration under its Zillow lock before starting its next crawl.
 A crawler already running keeps its loaded code until it exits. Its session,
 request queue, captures, and inventory outcomes are preserved by the migration.
 

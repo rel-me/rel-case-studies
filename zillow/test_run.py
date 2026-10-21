@@ -1,4 +1,5 @@
 import io
+import fcntl
 import json
 from pathlib import Path
 import tempfile
@@ -51,6 +52,40 @@ class LauncherTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'Install REL'):
                 launcher.run([])
             crawl.assert_not_called()
+
+    def test_zillow_lock_is_independent_and_held_until_child_exits(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app = root / 'REL.app'
+            app.mkdir()
+            output = root / 'output'
+            output.mkdir()
+            def child(*args, **kwargs):
+                with (output / 'zillow-run.lock').open('a') as lock:
+                    with self.assertRaises(BlockingIOError):
+                        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                return 0
+            with (output / 'run.lock').open('a') as county_lock:
+                fcntl.flock(county_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with patch.object(launcher, 'ROOT', root), patch.object(launcher, 'APP', app), \
+                     patch.object(launcher, 'wait_for_release'), patch.object(launcher.subprocess, 'run'), \
+                     patch.object(launcher.subprocess, 'call', side_effect=child):
+                    self.assertEqual(launcher.run(['--output', str(output)]), 0)
+
+    def test_owned_zillow_lock_refuses_a_second_launcher(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app = root / 'REL.app'
+            app.mkdir()
+            output = root / 'output'
+            output.mkdir()
+            with (output / 'zillow-run.lock').open('a') as lock:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with patch.object(launcher, 'ROOT', root), patch.object(launcher, 'APP', app), \
+                     patch.object(launcher.subprocess, 'call') as crawl:
+                    with self.assertRaisesRegex(RuntimeError, 'already running'):
+                        launcher.run(['--output', str(output)])
+                    crawl.assert_not_called()
 
 
 if __name__ == '__main__':

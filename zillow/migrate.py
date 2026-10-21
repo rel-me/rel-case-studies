@@ -12,7 +12,7 @@ import records
 
 
 def migrate(path):
-    """Caller must own the output directory's run.lock for the entire call."""
+    """Caller must hold the relevant crawl locks for the entire call."""
     if not path.exists():
         return {'status': 'no database'}
     db = sqlite3.connect(path)
@@ -59,12 +59,19 @@ def migrate(path):
 
 def run(output):
     output.mkdir(parents=True, exist_ok=True)
-    with (output / 'run.lock').open('a') as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            raise RuntimeError('Crawler is running; migration deferred. Retry after it stops.') from None
+    locks = []
+    try:
+        for path in sorted((output / 'run.lock', output / 'zillow-run.lock')):
+            lock = path.open('a')
+            locks.append(lock)
+            try:
+                fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                raise RuntimeError('Crawler is running; migration deferred. Retry after it stops.') from None
         return migrate(output / 'zillow.sqlite3')
+    finally:
+        for lock in reversed(locks):
+            lock.close()
 
 
 if __name__ == '__main__':

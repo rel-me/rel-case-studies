@@ -57,10 +57,14 @@ class MigrationTests(unittest.TestCase):
         self.assertEqual(migrate.run(self.output)['status'],'already migrated')
 
     def test_running_crawler_refuses_migration(self):
+        for name in ('run.lock', 'zillow-run.lock'):
+            with self.subTest(lock=name), (self.output / name).open('a') as lock:
+                fcntl.flock(lock,fcntl.LOCK_EX | fcntl.LOCK_NB)
+                with self.assertRaisesRegex(RuntimeError,'Crawler is running'):
+                    migrate.run(self.output)
+        # Refused attempts release any earlier acquired lock.
         with (self.output / 'run.lock').open('a') as lock:
             fcntl.flock(lock,fcntl.LOCK_EX | fcntl.LOCK_NB)
-            with self.assertRaisesRegex(RuntimeError,'Crawler is running'):
-                migrate.run(self.output)
         self.assertIn('asking_price',{r[1] for r in self.db.execute('PRAGMA table_info(observations)')})
         self.assertEqual(list(self.output.glob('*.bak')),[])
 
