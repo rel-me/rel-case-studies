@@ -49,7 +49,7 @@
     "configuration_verified": true,
     "verified_configuration_path": "/Users/gabe/.codex/automations/study-public-x-narrative-propagation/automation.toml",
     "sample_count": 24,
-    "latest_monitor_status": "partial; 2 of 24 URLs terminal, 22 pending; zero posts; existing session restoration still required"
+    "latest_monitor_status": "partial; 3 of 24 URLs terminal, 21 pending; zero posts; existing session restoration still required"
   },
   "documentation": {
     "url": "https://docs.rel.me/crawlee/",
@@ -77,14 +77,14 @@
     "source_review_completed_at_utc": "2026-10-20T07:18:42.850623+00:00"
   },
   "last_collection_attempt": {
-    "recorded_at_utc": "2026-10-21T02:16:24.499763+00:00",
+    "recorded_at_utc": "2026-10-21T02:46:25.914411+00:00",
     "run_id": "20261021T014622-monitor",
     "cycle": "monitor",
-    "execution_started_at_utc": "2026-10-21T02:16:18.067023+00:00",
+    "execution_started_at_utc": "2026-10-21T02:46:20.088009+00:00",
     "status": "partial_monitor_session_unavailable",
     "queue": {
       "total_queued_urls": 24,
-      "handled_urls": 2,
+      "handled_urls": 3,
       "finished": false
     },
     "monitor_observations": 0,
@@ -94,20 +94,20 @@
     "new_post_ids_not_previously_observed": [],
     "execution_failures": [
       {
-        "url": "https://x.com/SaraGonzalesTX",
+        "url": "https://x.com/CarolineWren",
         "error": "SESSION_NOT_FOUND: Browser session Session16781 was not found.",
         "stage": "retries_exhausted"
       }
     ],
     "execution_successful_visits": [],
-    "log": "data/logs/wakeup-20261021T021602.log",
+    "log": "data/logs/wakeup-20261021T024602.log",
     "next_action": "Restore existing authenticated Session16781, then resume the same active monitor cycle. Do not substitute sessions or reset terminal requests.",
     "new_selected_episode_edges": 0,
     "historical_searches_this_execution": 0,
     "one_hop_searches_this_execution": 0,
     "baseline_completed_at_utc": "2026-10-20T11:10:51.844438+00:00",
     "monitor_ends_at_utc": "2026-11-03T06:49:49.935919+00:00",
-    "access_gap_note": "Missing configured session repeated; immediate stop retained 22 pending URLs. One additional terminal failure this wakeup; zero observations. No additional diagnostics or navigation attempted."
+    "access_gap_note": "Missing configured session repeated; immediate stop retained 21 pending URLs. One additional terminal failure this wakeup; zero observations. No additional diagnostics or navigation attempted."
   },
   "baseline_completed_at_utc": "2026-10-20T11:10:51.844438+00:00",
   "development_workflow": {
@@ -118,8 +118,8 @@
     "worktree": "/Users/gabe/projects.next/rel-case-studies-x-propagation-pr",
     "requested_by_user": "Create a branch and PR; commit and push changes when applicable; in a sub-agent monitor the PR and fix failures; after a PR changes following a successful run, monitor again in a sub-agent.",
     "monitoring_instruction": "On subsequent scheduled wakeups, use a sub-agent to inspect PR checks, reviews and inline comments and fix actionable study issues in the isolated worktree, validating, committing and pushing when applicable. Parent owns collector, REL session and setup metadata. Preserve study scope/deadline and unrelated work; never merge without authorization. Sync reviewed study changes only; exclude captures, runtime data and environment. After any push following a successful validation/check, request a fresh sub-agent PR check on the pushed head before finishing.",
-    "last_checked_at_utc": "2026-10-21T02:16:17Z",
-    "last_observed_status": "Sub-agent check on d7b60b5e1b6b53229dd6889a8aa4e78c74895134: OPEN; no checks, reviews, issue comments or inline comments",
+    "last_checked_at_utc": "2026-10-21T02:46:24Z",
+    "last_observed_status": "Sub-agent check on 307a6b3780f83829ca27824b49c5a244fff014a8: OPEN; no checks, reviews, issue comments or inline comments",
     "validation": "19 offline extraction, queue, export, deadline, execution-limit, transport and missing-session tests passed in isolated worktree; four service-failure checks rerun clean after test fixture cleanup"
   },
   "execution_limit": {
@@ -149,7 +149,7 @@
     "required_action": "Restore the existing authenticated Session16781 in REL. If it cannot be restored, user must identify and authorize a replacement before configuration changes.",
     "configuration_unchanged": true,
     "immediate_stop_commit": "ea9626bc98a18a9e7e554f6efd495dff42f66018",
-    "last_confirmed_at_utc": "2026-10-21T02:16:24.499763+00:00",
-    "last_gap_review": "data/reviews/20261021T021602.json"
+    "last_confirmed_at_utc": "2026-10-21T02:46:25.914411+00:00",
+    "last_gap_review": "data/reviews/20261021T024602.json"
   }
 }
