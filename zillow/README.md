@@ -1,4 +1,4 @@
-# Zillow research from Santa Cruz's official parcel inventory
+# Zillow property research with REL
 
 The city GIS provides the address inventory. `rel-crawlee` performs Zillow
 lookups through one persistent REL session. SQLite stores the official source
