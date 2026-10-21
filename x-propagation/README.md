@@ -187,6 +187,9 @@ Three REL transport or browser readiness failures also stop an execution,
 including failures on a URL's final allowed attempt. The coverage log retains
 the original errors; URLs already exhausted stay terminal, while pending URLs
 remain available for the next wakeup.
+A specific `SESSION_NOT_FOUND` error for the configured caller-owned session
+stops immediately and records `cycle_stopped_session_unavailable`. Restore that
+existing session before resuming; the collector never substitutes a session.
 The monitor window starts on its first run and stops collection after 14 days.
 The final report still requires evidence review; it must not be labeled complete
 merely because a timestamp has elapsed.

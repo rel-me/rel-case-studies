@@ -188,6 +188,14 @@ class DeadlineTests(unittest.IsolatedAsyncioTestCase):
 
 
 class ServiceFailureTests(unittest.IsolatedAsyncioTestCase):
+    def test_missing_session_is_specific_to_configured_caller_owned_session(self):
+        message = 'SESSION_NOT_FOUND: Browser session Session16781 was not found.'
+        self.assertTrue(collector.is_configured_session_missing(RuntimeError(message), 'Session16781'))
+        for unrelated in ('Page was not found.',
+                          'SESSION_NOT_FOUND: Browser session Session2 was not found.',
+                          'Browser session Session16781 was not found.'):
+            self.assertFalse(collector.is_configured_session_missing(RuntimeError(unrelated), 'Session16781'))
+
     def test_only_rel_service_errors_are_readiness_failures(self):
         for message in ('Timed out waiting for embedded Chromium after 30.0 seconds',
                         'UPSTREAM_UNAVAILABLE',
@@ -204,6 +212,17 @@ class ServiceFailureTests(unittest.IsolatedAsyncioTestCase):
             'Timed out waiting for embedded Chromium after 30.0 seconds',
             'Could not reach REL at http://127.0.0.1:17319/v1: Remote end closed connection without response',
         ]
+        await self.assert_failures_preserve_cycle(errors, ('final', 'retry', 'final'),
+                                                  'cycle_stopped_rel_unavailable')
+
+    async def test_missing_session_stops_after_first_retry_or_final_failure(self):
+        for callback in ('retry', 'final'):
+            with self.subTest(callback=callback):
+                await self.assert_failures_preserve_cycle(
+                    ['SESSION_NOT_FOUND: Browser session Session16781 was not found.'],
+                    (callback,), 'cycle_stopped_session_unavailable')
+
+    async def assert_failures_preserve_cycle(self, errors, callbacks, stop_status):
         crawlers = []
 
         class FakeCrawler:
@@ -227,13 +246,14 @@ class ServiceFailureTests(unittest.IsolatedAsyncioTestCase):
 
             async def run(self, requests):
                 self.pending = list(requests)
-                for handler, message in zip((self.final_handler, self.retry_handler, self.final_handler), errors):
+                for callback, message in zip(callbacks, errors):
+                    handler = self.final_handler if callback == 'final' else self.retry_handler
                     request = self.pending.pop(0)
                     self.dispatched.append(request.url)
                     await handler(SimpleNamespace(request=request), RuntimeError(message))
                     if self.stopped:
                         return
-                raise AssertionError('Collector did not stop after three service failures')
+                raise AssertionError('Collector did not stop after expected service failures')
 
         state = {'pilot_verified': True,
                  'monitor_started_at_utc': datetime.now(timezone.utc).isoformat(),
@@ -250,15 +270,20 @@ class ServiceFailureTests(unittest.IsolatedAsyncioTestCase):
             with patch.object(collector, 'ROOT', root), patch.object(collector, 'CONFIG', config, create=True), \
                     patch.object(collector, 'RelCrawler', FakeCrawler), \
                     patch.object(collector.RequestQueue, 'open', AsyncMock(return_value=queue)):
-                with self.assertRaisesRegex(SystemExit, 'Cycle interrupted'):
-                    await collector.collect(SimpleNamespace(cycle='monitor'))
+                db = collector.database()
+                try:
+                    with patch.object(collector, 'database', return_value=db), \
+                            self.assertRaisesRegex(SystemExit, 'Cycle interrupted'):
+                        await collector.collect(SimpleNamespace(cycle='monitor'))
+                finally:
+                    db.close()
             self.assertEqual(json.loads((root / 'data/checkpoint.json').read_text()), state)
             rows = [json.loads(line) for line in (root / 'data/exports/coverage.jsonl').read_text().splitlines()]
             self.assertEqual([r['detail'] if r['status'] == 'retries_exhausted'
-                              else json.loads(r['detail'])['error'] for r in rows[:3]], errors)
-            self.assertEqual(rows[3]['status'], 'cycle_stopped_rel_unavailable')
-        self.assertEqual(len(crawlers[0].dispatched), 3)
-        self.assertEqual(len(crawlers[0].pending), len(config['seeds']) - 3)
+                              else json.loads(r['detail'])['error'] for r in rows[:-1]], errors)
+            self.assertEqual(rows[-1]['status'], stop_status)
+        self.assertEqual(len(crawlers[0].dispatched), len(errors))
+        self.assertEqual(len(crawlers[0].pending), len(config['seeds']) - len(errors))
         queue.is_finished.assert_awaited_once()
 
 

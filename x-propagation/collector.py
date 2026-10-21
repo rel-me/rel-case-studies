@@ -171,6 +171,10 @@ def is_rel_readiness_failure(error):
     ))
 
 
+def is_configured_session_missing(error, session_id):
+    return f'SESSION_NOT_FOUND: Browser session {session_id} was not found.' in str(error)
+
+
 async def run_before_deadline(crawler, requests, deadline, execution_timeout_seconds=1200):
     # Request timeouts do not cover time spent waiting for Crawlee's resource
     # gate to dispatch work. Bound the whole execution and await its cleanup.
@@ -305,6 +309,10 @@ async def collect(args):
 
     def service_failure(context, error):
         nonlocal readiness_failures
+        if is_configured_session_missing(error, CONFIG['session_id']):
+            coverage(context, 'cycle_stopped_session_unavailable', str(error))
+            crawler.stop(reason='Configured caller-owned REL session is unavailable; restore the existing session before resuming')
+            return
         if not is_rel_readiness_failure(error):
             return
         readiness_failures += 1
