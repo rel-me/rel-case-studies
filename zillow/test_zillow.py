@@ -55,6 +55,19 @@ class Tests(unittest.IsolatedAsyncioTestCase):
         manager.__aenter__.return_value = SimpleNamespace(chromium=SimpleNamespace(launch=self.launch))
         self.adapter = patch('rel_crawlee._crawler.async_playwright', return_value=manager)
         self.creation_adapter = patch('zillow.async_playwright', return_value=manager)
+        self.session_created = False
+        async def session_rpc(method, path, payload=None):
+            tab = {'id':'Session9001','group_id':'Group9001'}
+            if path == '/groups':
+                return {'groups':[{'id':'Group9001','profile':'OxylabsDatacenter','sessions':[tab]}] if self.session_created else []}
+            if method == 'POST':
+                self.session_created = True
+                return {'session':tab}
+            return {'session':tab}
+        self.session_api = SimpleNamespace(call=AsyncMock(side_effect=session_rpc))
+        api_patch = patch('zillow.ProfileSessionApi',return_value=self.session_api)
+        api_patch.start()
+        self.addCleanup(api_patch.stop)
         self.creation_adapter.start()
         self.addCleanup(self.creation_adapter.stop)
         download = patch('inventory.download', return_value=([], '2026-09-15', Path(self.tmp.name) / 'snapshot.json'))
@@ -103,13 +116,12 @@ class Tests(unittest.IsolatedAsyncioTestCase):
                                profile='OxylabsDatacenter', base_url='http://127.0.0.1:17319/v1')
         self.assertEqual(await zillow.persistent_session(args), 'Session9001')
         self.assertEqual(await zillow.persistent_session(args), 'Session9001')
-        self.launch.assert_awaited_once()
-        self.assertTrue(self.launch.call_args.kwargs['persist'])
-        self.assertEqual(self.launch.call_args.kwargs['profile'], 'OxylabsDatacenter')
+        self.launch.assert_not_awaited()
+        self.assertEqual(sum(call.args[0]=='POST' for call in self.session_api.call.await_args_list),1)
         args.profile = 'Different'
         with self.assertRaisesRegex(ValueError, 'different Profile'):
             await zillow.persistent_session(args)
-        self.launch.assert_awaited_once()
+        self.launch.assert_not_awaited()
 
     async def test_queue_resume_dedup_and_profile_sessions(self):
         await self.run_crawler([URL, URL + '?other=1'], limit=1)

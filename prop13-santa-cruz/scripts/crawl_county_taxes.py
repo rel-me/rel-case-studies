@@ -16,6 +16,9 @@ import json
 from pathlib import Path
 import re
 import sqlite3
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "zillow"))
+from profile_session import ProfileSessionApi, resolve_profile_session
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit, parse_qs, quote
 from urllib.request import Request as HttpRequest, urlopen
@@ -33,25 +36,8 @@ async def ensure_session(args):
     state=json.loads(path.read_text()) if path.exists() else {}
     if state and (state.get('profile')!=args.profile or state.get('base_url')!=args.base_url or state.get('group')!='prop13-county-taxes'):
         raise ValueError('County session belongs to another profile, group or endpoint')
-    async def rpc(method,suffix,payload=None):
-        def send():
-            request=HttpRequest(args.base_url+suffix,method=method,
-                data=json.dumps(payload).encode() if payload else None,headers={'Content-Type':'application/json'})
-            try: response=urlopen(request,timeout=20)
-            except HTTPError as error: response=error
-            with response: return json.load(response)
-        return await asyncio.to_thread(send)
-    if state.get('session_id'):
-        reply=await rpc('GET','/sessions/'+quote(state['session_id'],safe=''))
-        if reply.get('status')=='ok':
-            session=reply['data']['session']
-            if session.get('profile')!=args.profile or session.get('group')!='prop13-county-taxes':
-                raise ValueError('Refusing to use a session outside the county collector group')
-            return state['session_id']
-        if reply.get('error',{}).get('id')!='SESSION_NOT_FOUND': raise RuntimeError(str(reply.get('error')))
-    reply=await rpc('POST','/sessions',{'profile':args.profile,'group':'prop13-county-taxes','lifetime':{'type':'indefinite'}})
-    if reply.get('status')!='ok': raise RuntimeError(str(reply.get('error')))
-    state={'profile':args.profile,'group':'prop13-county-taxes','base_url':args.base_url,'session_id':reply['data']['session']['id']}
+    state = await resolve_profile_session(ProfileSessionApi(args.base_url), state, args.profile, 'prop13-county-taxes')
+    state['base_url'] = args.base_url
     temporary=path.with_suffix('.tmp');temporary.write_text(json.dumps(state,indent=2)+'\n');temporary.replace(path)
     return state['session_id']
 

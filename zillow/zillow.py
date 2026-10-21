@@ -20,6 +20,7 @@ from rel_playwright.async_api import async_playwright
 
 import records
 import inventory
+from profile_session import ProfileSessionApi, resolve_profile_session
 
 ROOT = Path(__file__).resolve().parent
 
@@ -208,21 +209,16 @@ def register_handlers(crawler, db, max_addresses=50, retry_delay=5):
 async def persistent_session(args):
     """Create once, then attach to the saved session without rotating it."""
     state_file = args.output / 'session.json'
-    if state_file.exists():
-        state = json.loads(state_file.read_text())
-        if state['profile'] != args.profile or state['base_url'] != args.base_url:
-            raise ValueError('Saved session belongs to a different Profile or REL endpoint')
-        return state['session_id']
+    state = json.loads(state_file.read_text()) if state_file.exists() else {}
+    if state and (state.get('profile') != args.profile or state.get('base_url') != args.base_url):
+        raise ValueError('Saved session belongs to a different Profile or REL endpoint')
+    state = await resolve_profile_session(ProfileSessionApi(args.base_url), state, args.profile, 'zillow-case-study')
+    state['base_url'] = args.base_url
     args.output.mkdir(parents=True, exist_ok=True)
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(profile=args.profile, rel_base_url=args.base_url,
-                                           persist=True, group='zillow-case-study')
-        page = await browser.new_page()
-        state = dict(session_id=page.session_id, profile=args.profile, base_url=args.base_url)
-        temporary = state_file.with_suffix('.tmp')
-        temporary.write_text(json.dumps(state, indent=2) + '\n')
-        temporary.replace(state_file)
-        return page.session_id
+    temporary = state_file.with_suffix('.tmp')
+    temporary.write_text(json.dumps(state, indent=2) + '\n')
+    temporary.replace(state_file)
+    return state['session_id']
 
 
 async def crawl(args):
