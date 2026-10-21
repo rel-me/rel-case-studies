@@ -137,3 +137,37 @@ unknown prices. Changes are transactional and rerunning is safe. `run.sh`
 also applies the migration under the same lock before starting its next crawl.
 A crawler already running keeps its loaded code until it exits. Its session,
 request queue, captures, and inventory outcomes are preserved by the migration.
+
+### Terminal dashboard
+
+Run `./monitor.sh --output /absolute/path/to/private/output` from this directory
+with Python 3 (no package installation). `PYTHON=/path/to/python3` selects an
+interpreter. The default output is `CRAWL_OUTPUT`, then this directory's `output`
+when it contains the database, then an existing
+`~/projects.next/rel-case-studies/zillow/output` installation.
+
+The dashboard independently shows Zillow and county-tax status, remaining work,
+saved pages, database error totals, failure streaks, and saved stop reasons. The
+live feed includes every newly saved URL and database error. Startup exceptions
+and ERROR/CRITICAL/FATAL lines from the crawler logs are shown too, marked
+`[log:filename]`; these diagnostics may also describe an error saved in SQLite.
+Log timestamps unavailable in historical output display as `--:--:--`; new log
+errors use their observation time. ANSI escapes, control characters, and line
+breaks are removed so each event occupies one terminal line.
+
+Keys: `q` quits, Space freezes/resumes the view, `1/2/3` filter all/Zillow/tax,
+`e/s/a` filter errors/saves/both, arrows and PageUp/PageDown scroll, End follows
+the live tail, and left/right reveal long lines. The display retains 5,000 events
+and initially reads the latest 60 records per table (`--history N` changes that).
+Polling defaults to every two seconds (`--interval 5` changes it). New records
+are drained in bounded batches without skipping IDs.
+
+Use `./monitor.sh --plain` for complete, unwrapped event lines suitable for a pipe
+or `tee`. Use `./monitor.sh --once --history 10` for one status snapshot and recent
+events. Noninteractive output automatically selects plain mode. Missing/busy
+databases are reported and retried; the monitor never creates a database.
+
+This monitor is read-only. It never starts, stops, or restarts a crawler, clears a
+safety stop, navigates REL, retries failed resources, or edits a queue. Quitting
+leaves both crawlers alone. Output contains private crawl URLs and errors; keep
+terminal recordings and redirected logs private.
