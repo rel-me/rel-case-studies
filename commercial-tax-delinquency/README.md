@@ -7,6 +7,7 @@ Cruz County is in scope; adjacent counties are excluded.
 
 The runtime is now the two-stage [crawler](crawl.py), replacing the earlier
 single-session Action so each source uses its requested Profile. See the
+[October 20 rural follow-up](RESEARCH-2026-10-20.md),
 [October 18 tax recheck](RESEARCH-2026-10-18.md) and
 [October 17 listing report](RESEARCH-2026-10-17.md) for actual evidence.
 **Current filter:** asking price at most $2,000,000; prioritize properties suited
