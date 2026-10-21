@@ -144,6 +144,29 @@ def normalize_apn(value):
     return value
 
 
+def detail_matches_listing(apn, listing_text, detail_text, title, status, url):
+    """Accept only the requested parcel or its explicitly paired listing alias."""
+    identity = re.search(r'Parcel/Account\s*#\s*([\d-]+)', detail_text)
+    if (status >= 400 or urlsplit(url).hostname != urlsplit(SITE).hostname
+            or not identity or title not in detail_text):
+        return False
+    try:
+        detail_apn = normalize_apn(identity[1])
+        requested_apn = normalize_apn(apn)
+        if detail_apn == requested_apn:
+            return True
+        # Only the parcel heading can authorize an alternate, never an address,
+        # other bill row, or a number appearing elsewhere in the page.
+        headings = list(re.finditer(r'Parcel/Account\s*#\s*([\d-]+)(?:\s*\(\s*([\d-]+)\s*\))?', listing_text))
+        if len(headings) != 1:
+            return False
+        heading = headings[0]
+        return (normalize_apn(heading[1]) == requested_apn and heading[2] is not None
+                and normalize_apn(heading[2]) == detail_apn)
+    except ValueError:
+        return False
+
+
 def amount(value):
     match = re.fullmatch(r'\$([\d,]+\.\d{2})', value.strip())
     if not match:
@@ -417,9 +440,8 @@ async def crawl(args, db):
             detail_html=await page.content()
             detail=save_capture(db,apn,page.url,detail_html,'bill_detail')
             info=page_information(detail_html)
-            identity=re.search(r'Parcel/Account\s*#\s*([\d-]+)',info['text'])
-            if (response.status>=400 or urlsplit(page.url).hostname!=urlsplit(SITE).hostname
-                or not identity or normalize_apn(identity[1])!=apn or entry['title'] not in info['text']):
+            if not detail_matches_listing(apn, page_information(html)['text'], info['text'],
+                                          entry['title'], response.status, page.url):
                 with db: db.execute("UPDATE listed_bills SET detail_status='failed',detail_error='Detail identity or response validation failed' WHERE apn=? AND bill_key=?",(apn,entry['key']))
                 raise ValueError('County detail did not match the requested parcel and bill title')
             with db:
