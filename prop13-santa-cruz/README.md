@@ -239,3 +239,12 @@ worker restarts; monitoring must honor a saved safety stop. Existing failed
 parcels are not automatically requeued.
 
 Tests use synthetic server snapshots and require no private export. Preview and deployment require the local `data/data.json` export; it is deliberately ignored by Git.
+
+### Tax retry navigation
+
+An existing Crawlee retry starts with one fresh GET of the county search form
+through the same REL session. It does not trust a cached form URL or replay a
+submitted search via Back after a timeout. Ordinary successful requests retain
+the existing form/history reuse. The retry budget stays unchanged: if the fresh
+form still fails, normal failure accounting applies. Access denials still stop
+the crawl, and saved terminal failures or safety stops are not cleared/retried.
