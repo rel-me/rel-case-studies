@@ -25,6 +25,59 @@ class TaxEvidenceTests(unittest.TestCase):
         self.assertEqual(point['coordinate_source'], 'Third-party property website')
 
 class CountyExportTests(unittest.TestCase):
+    def empty_source(self, root):
+        import sqlite3
+        from contextlib import closing
+        source=root/'source.sqlite3'
+        with closing(sqlite3.connect(source)) as db:
+            db.executescript((path.parents[2]/'zillow/schema.sql').read_text())
+        return source
+
+    def test_empty_export_keeps_public_schema_without_inventing_a_snapshot_date(self):
+        import csv,io,json,tempfile
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);source=self.empty_source(root);destination=root/'export'
+            with redirect_stdout(io.StringIO()): module.export(source,destination)
+            data=json.loads((destination/'data.json').read_text())
+            self.assertEqual(data['records'],[])
+            self.assertIsNone(data['metadata']['snapshot_date'])
+            self.assertEqual(data['metadata']['total_records'],0)
+            with (destination/'data.csv').open(newline='') as stream:
+                rows=list(csv.reader(stream))
+            self.assertEqual(rows,[list(module.PUBLIC_RECORD_FIELDS)])
+
+    def test_county_only_assessment_exports_before_any_zillow_capture(self):
+        import csv,io,json,tempfile
+        from contextlib import redirect_stdout
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory);source=self.empty_source(root);destination=root/'export'
+            spec=importlib.util.spec_from_file_location('county_empty_export',path.with_name('crawl_county_taxes.py'))
+            county=importlib.util.module_from_spec(spec);spec.loader.exec_module(county)
+            tax=county.init_database(source)
+            try:
+                tax.execute("INSERT INTO county_tax_targets(apn,zpid,address) VALUES('02625202','','1215 DOUGMAR DR')")
+                capture=county.save_capture(tax,'02625202','https://ttc.co.santa-cruz.ca.us/TaxBills/','<p>history</p>','history')
+                tax.execute('INSERT INTO county_tax_bills VALUES(?,?,?,?,?,?,?,?,?)',('02625202',2025,2026,'10000.00','5000.00',0,'[]',None,capture))
+                detail=county.save_capture(tax,'02625202','https://ttc.co.santa-cruz.ca.us/TaxBills/','<p>TOTAL VALUE $700,000 LESS EXEMPTION</p>','bill_detail')
+                tax.execute("INSERT INTO county_tax_listed_bills(apn,bill_key,bill_type,fiscal_start,detail_status,detail_capture_id) VALUES('02625202','test','Annual Tax Bill',2025,'complete',?)",(detail,))
+                tax.commit()
+                expected_date=tax.execute('SELECT max(captured_at) FROM county_tax_captures').fetchone()[0][:10]
+            finally: tax.close()
+            with redirect_stdout(io.StringIO()): module.export(source,destination,county_taxes=source)
+            data=json.loads((destination/'data.json').read_text());record=data['records'][0]
+            self.assertEqual(record['address'],'1215 DOUGMAR DR')
+            self.assertIsNone(record['estimated_value'])
+            self.assertEqual(record['assessed_value'],700000)
+            self.assertEqual(record['assessment_source'],'Santa Cruz County Tax Collector')
+            self.assertEqual(data['metadata']['snapshot_date'],expected_date)
+            self.assertEqual(data['metadata']['with_estimate'],0)
+            self.assertEqual(data['metadata']['with_assessment'],1)
+            self.assertEqual(set(record),set(module.PUBLIC_RECORD_FIELDS))
+            self.assertFalse({'apn','zpid','annual_tax','annual_paid','source_url'} & record.keys())
+            with (destination/'data.csv').open(newline='') as stream:
+                self.assertEqual(len(list(csv.DictReader(stream))),1)
+
     def test_public_export_shows_assessment_without_bill_or_payment_fields(self):
         import sqlite3,tempfile,json,io
         from contextlib import redirect_stdout

@@ -14,6 +14,14 @@ import sqlite3
 import re
 
 
+PUBLIC_RECORD_FIELDS = (
+    'record_id', 'address', 'city', 'postal_code', 'in_santa_cruz_city', 'municipality',
+    'home_type', 'bedrooms', 'living_area', 'estimated_value', 'estimate_captured_at',
+    'assessed_value', 'assessment_year', 'latitude', 'longitude', 'coordinate_source',
+    'assessment_source',
+)
+
+
 def positive(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
 
@@ -114,6 +122,7 @@ def export(database, destination, county_inventory=None, county_taxes=None, supp
             for apn,_ in matching: by_apn.setdefault(apn,[]).append(record)
         records.append(record)
     county_records_by_apn={}
+    tax_snapshot=None
     if county_taxes:
         if supplement_database is None:
             candidate=Path(county_taxes).parent/'dougmar-zillow'/'zillow.sqlite3'
@@ -168,17 +177,18 @@ def export(database, destination, county_inventory=None, county_taxes=None, supp
             if not matches:
                 # County-only records are visible without inventing a market estimate.
                 geography=county.get(apn,{})
-                record={key:None for key in records[0]}
+                record=dict.fromkeys(PUBLIC_RECORD_FIELDS)
                 record.update(record_id=hashlib.sha256(('county-parcel:'+apn).encode()).hexdigest()[:14],address=target['address'],city=geography.get('postal_city'),postal_code=geography.get('postal_code'),in_santa_cruz_city=(geography['municipality']=='City of Santa Cruz' if geography['municipality'] else None) if geography else None,municipality=geography.get('municipality'))
                 records.append(record);matches=[record]
             for record in matches:
                 if assessment is not None: record.update(assessed_value=assessment,assessment_year=bill['fiscal_start'],assessment_source='Santa Cruz County Tax Collector')
+        tax_snapshot=taxdb.execute(f'SELECT max(captured_at) FROM {prefix}captures').fetchone()[0]
         taxdb.close()
     coverage = dict(db.execute("SELECT status,count(*) FROM inventory_addresses WHERE address_key IN (SELECT address_key FROM inventory_parcels WHERE classification='residential') GROUP BY status"))
-    snapshot = db.execute('SELECT max(captured_at) FROM captures').fetchone()[0]
+    snapshot = db.execute('SELECT max(captured_at) FROM captures').fetchone()[0] or tax_snapshot
     db.close()
     metadata = {
-        'title': 'Property Tax Disparities: A Santa Cruz County Study', 'geographic_scope': 'Santa Cruz County', 'county_inventory':county_scope, 'snapshot_date': snapshot[:10],
+        'title': 'Property Tax Disparities: A Santa Cruz County Study', 'geographic_scope': 'Santa Cruz County', 'county_inventory':county_scope, 'snapshot_date': snapshot[:10] if snapshot else None,
         'source_category': 'Third-party property website; official county residential address inventory',
         'coverage': coverage, **counts,
         'total_records':len(records), 'with_location':sum(r.get('latitude') is not None for r in records), 'with_estimate': sum(positive(r['estimated_value']) for r in records),
@@ -190,7 +200,7 @@ def export(database, destination, county_inventory=None, county_taxes=None, supp
     data = {'metadata':metadata,'records':records}
     (destination/'data.json').write_text(json.dumps(data,separators=(',',':'),allow_nan=False)+'\n')
     with (destination/'data.csv').open('w',newline='') as f:
-        writer=csv.DictWriter(f,fieldnames=list(records[0]),lineterminator='\n')
+        writer=csv.DictWriter(f,fieldnames=PUBLIC_RECORD_FIELDS,lineterminator='\n')
         writer.writeheader(); writer.writerows({key:json.dumps(value) if isinstance(value,(list,dict)) else value for key,value in record.items()} for record in records)
     print(json.dumps(metadata,indent=2))
 
