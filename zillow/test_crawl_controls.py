@@ -127,9 +127,31 @@ class ControlTests(unittest.TestCase):
     def test_zillow_interrupts_child_and_lets_launcher_keep_lock(self):
         parent=f'/usr/bin/python3 {self.output}/run.py --output {self.output}'
         child=f'/usr/bin/python3 {self.output}/zillow.py --output {self.output}'
-        with patch.object(controls,'process_info',side_effect=[parent,child]),patch.object(controls.subprocess,'run',return_value=Mock(stdout=f'11 10 {child}\n')),patch.object(controls.os,'kill') as kill:
+        with patch.object(controls,'process_info',side_effect=[parent,child]),patch.object(controls.subprocess,'run',return_value=Mock(stdout=f'11 10 {child}\n',returncode=0)),patch.object(controls.os,'kill') as kill:
             controls.interrupt_worker(10,'run.py',self.output)
             kill.assert_called_once_with(11,signal.SIGINT)
+
+    def test_tax_interrupts_nested_crawler_child_and_preserves_wrapper(self):
+        script=f'{self.output}/crawl_county_taxes.py --output {self.output}'
+        wrapper=f'/usr/bin/caffeinate -i /usr/bin/python3 {script}'
+        nested=f'/usr/bin/env /usr/bin/python3 {script}'
+        child=f'/usr/bin/python3 {script}'
+        foreign=f'/usr/bin/python3 {self.output}/crawl_county_taxes.py --output {self.output}-other'
+        listing=f'11 10 {nested}\n12 11 {child}\n13 10 {foreign}\n14 99 {child}\n'
+        with patch.object(controls,'process_info',side_effect=[wrapper,child]), \
+             patch.object(controls.subprocess,'run',return_value=Mock(stdout=listing,returncode=0)), \
+             patch.object(controls.os,'kill') as kill:
+            controls.interrupt_worker(10,'crawl_county_taxes.py',self.output)
+            kill.assert_called_once_with(12,signal.SIGINT)
+
+    def test_failed_child_inventory_refuses_to_signal_wrapper(self):
+        command=f'/usr/bin/caffeinate -i /usr/bin/python3 {self.output}/crawl_county_taxes.py --output {self.output}'
+        with patch.object(controls,'process_info',return_value=command), \
+             patch.object(controls.subprocess,'run',return_value=Mock(stdout='',returncode=1)), \
+             patch.object(controls.os,'kill') as kill:
+            with self.assertRaisesRegex(controls.ControlError,'Cannot inspect'):
+                controls.interrupt_worker(10,'crawl_county_taxes.py',self.output)
+            kill.assert_not_called()
 
     def test_output_path_prefix_is_not_the_same_queue(self):
         self.assertFalse(controls.owns_process(f'/p/run.py --output {self.output}-other','run.py',self.output))
@@ -151,6 +173,88 @@ class ControlTests(unittest.TestCase):
         with self.assertRaisesRegex(OSError,'exec failed'):self.run_worker()
         self.assertEqual(self.read('active-run.json'),run)
         self.assertEqual((self.output/'zillow-progress.json').read_bytes(),before)
+
+    def test_stop_preserves_progress_and_only_interrupts_selected_worker(self):
+        for worker,run_name,script,progress in [('zillow','active-run.json','run.py','zillow-progress.json'),
+                                               ('tax','county-run.json','crawl_county_taxes.py','county-progress.json')]:
+            before=(self.output/progress).read_bytes()
+            actual=f'/usr/bin/python3 {self.output}/{script} --output {self.output}'
+            with patch.object(controls,'process_info',side_effect=[actual,'']), patch.object(controls,'interrupt_worker') as interrupt:
+                result=controls.stop_worker(self.output,worker)
+            self.assertEqual(result['status'],'stopped')
+            interrupt.assert_called_once_with(self.read(run_name)['pid'],script,self.output.resolve())
+            self.assertEqual(self.read(run_name)['maintenance'],controls.USER_STOP)
+            self.assertEqual((self.output/progress).read_bytes(),before)
+        self.popen.assert_not_called()
+
+    def test_stop_timeout_retains_pause_and_never_force_kills_or_starts(self):
+        actual=f'/usr/bin/python3 {self.output}/run.py --output {self.output}'
+        with patch.object(controls,'process_info',return_value=actual), patch.object(controls,'interrupt_worker') as interrupt, patch.object(controls.threading,'Thread') as watcher:
+            with self.assertRaisesRegex(controls.ControlError,'still finishing'):
+                controls.stop_worker(self.output,'zillow',timeout=0)
+        interrupt.assert_called_once()
+        watcher.return_value.start.assert_called_once()
+        self.assertEqual(self.read('active-run.json')['maintenance'],controls.USER_STOP)
+        self.assertEqual(self.read('active-run.json')['status'],'stopping')
+        self.popen.assert_not_called()
+
+    def test_stop_refuses_unrelated_pid_or_unowned_queue_lock(self):
+        with patch.object(controls,'process_info',return_value='/usr/bin/python3 other.py'), patch.object(controls,'interrupt_worker') as interrupt:
+            with self.assertRaisesRegex(controls.ControlError,'another process'):
+                controls.stop_worker(self.output,'zillow')
+            interrupt.assert_not_called()
+        with (self.output/'zillow-run.lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaisesRegex(controls.ControlError,'another worker'):
+                controls.stop_worker(self.output,'zillow')
+        self.assertNotIn('maintenance',self.read('active-run.json'))
+
+    def test_stop_preserves_existing_maintenance_and_safety_stop(self):
+        self.write('active-run.json',dict(self.read('active-run.json'),maintenance='repair'))
+        self.write('zillow-progress.json',{'stop_reason':'HTTP 403','consecutive_failures':11})
+        before=(self.output/'zillow-progress.json').read_bytes()
+        controls.stop_worker(self.output,'zillow')
+        self.assertEqual(self.read('active-run.json')['maintenance'],'repair')
+        self.assertEqual((self.output/'zillow-progress.json').read_bytes(),before)
+
+    def test_real_wrapper_waits_for_tax_child_to_stop_without_orphaning_it(self):
+        import os,subprocess,sys,time
+        patch.stopall()
+        script=self.output/'crawl_county_taxes.py'
+        script.write_text('''import fcntl,os,signal,sys,time
+from pathlib import Path
+out=Path(sys.argv[sys.argv.index('--output')+1])
+with (out/'run.lock').open('a') as lock:
+    fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    signal.signal(signal.SIGINT,lambda *_:sys.exit(0))
+    (out/'test-child.pid').write_text(str(os.getpid()))
+    while True:time.sleep(0.1)
+''')
+        wrapper=self.output/'wrapper.py'
+        wrapper.write_text('import subprocess,sys\nsys.exit(subprocess.Popen(sys.argv[1:]).wait())\n')
+        process=subprocess.Popen([sys.executable,str(wrapper),sys.executable,str(script),'--output',str(self.output)],
+                                 stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True)
+        def cleanup():
+            marker=self.output/'test-child.pid'
+            if marker.exists():
+                child_pid=int(marker.read_text())
+                if controls.owns_process(controls.process_info(child_pid),'crawl_county_taxes.py',self.output):
+                    try: os.kill(child_pid,signal.SIGTERM)
+                    except ProcessLookupError: pass
+            if process.poll() is None: process.terminate()
+            process.wait(timeout=5)
+        self.addCleanup(cleanup)
+        deadline=time.monotonic()+5
+        while not (self.output/'test-child.pid').exists():
+            if process.poll() is not None or time.monotonic()>deadline: self.fail('Fake tax child did not become ready')
+            time.sleep(0.01)
+        child=int((self.output/'test-child.pid').read_text())
+        self.write('county-run.json',dict(self.read('county-run.json'),pid=process.pid))
+        controls.stop_worker(self.output,'tax',timeout=5)
+        self.assertEqual(process.wait(timeout=5),0)
+        self.assertFalse(controls.process_info(child))
+        self.assertFalse(controls.queue_busy(self.output/'run.lock'))
+        self.assertEqual(self.read('county-run.json')['maintenance'],controls.USER_STOP)
 
     def test_real_fake_workers_start_and_restart_under_separate_locks(self):
         """Exercise actual subprocesses and SIGINT, never REL or the live queues."""
@@ -188,3 +292,10 @@ with (out/name).open('a') as lock:
             self.assertNotEqual(self.read(run_name)['pid'],first)
             self.assertFalse(controls.process_info(first))
             self.assertEqual((self.output/progress).read_bytes(),before)
+
+            second=self.read(run_name)['pid']
+            controls.stop_worker(self.output,worker,timeout=5)
+            self.assertFalse(controls.process_info(second))
+            self.assertFalse(controls.queue_busy(self.output/('zillow-run.lock' if worker=='ZILLOW' else 'run.lock')))
+            self.assertEqual((self.output/progress).read_bytes(),before)
+            self.assertEqual(self.read(run_name)['maintenance'],controls.USER_STOP)

@@ -4,6 +4,7 @@ import fcntl
 import json
 from datetime import datetime, timezone
 import os
+import signal
 from pathlib import Path
 import subprocess
 import sys
@@ -16,6 +17,29 @@ from migrate import migrate
 ROOT = Path(__file__).resolve().parent
 APP = Path('/Applications/REL.app')
 BASE_URL = 'http://127.0.0.1:17319/v1'
+
+
+def wait_for_child(command, **options):
+    """Latch interrupts during spawn and hold queue ownership until child exit."""
+    child = None
+    interrupted = False
+    previous = signal.getsignal(signal.SIGINT)
+
+    def interrupt(signum, frame):
+        nonlocal interrupted
+        interrupted = True
+        if child is not None and child.poll() is None:
+            try: child.send_signal(signal.SIGINT)
+            except ProcessLookupError: pass
+
+    signal.signal(signal.SIGINT, interrupt)
+    try:
+        child = subprocess.Popen(command, **options)
+        if interrupted:
+            interrupt(signal.SIGINT, None)
+        return child.wait()
+    finally:
+        signal.signal(signal.SIGINT, previous)
 
 
 def wait_for_release(timeout=30):
@@ -72,7 +96,16 @@ def run(args):
         temporary.write_text(json.dumps(state, indent=2) + '\n')
         temporary.replace(state_path)
         with (output / 'zillow-crawl.log').open('a') as log_stream:
-            exit_code = subprocess.call(command, cwd=ROOT, stdout=log_stream, stderr=subprocess.STDOUT)
+            exit_code = wait_for_child(command, cwd=ROOT, stdout=log_stream, stderr=subprocess.STDOUT)
+        # A dashboard Stop may set a pause while the child is finishing. Keep
+        # it when publishing the launcher exit instead of reviving automation.
+        try:
+            latest = json.loads(state_path.read_text())
+            if latest.get('pid') == state['pid']:
+                for key in ('maintenance', 'user_stop_requested_at'):
+                    if key in latest: state[key] = latest[key]
+        except (OSError, ValueError):
+            pass
         state.update(status='stopped', stopped_at=datetime.now(timezone.utc).isoformat(), exit_code=exit_code)
         temporary.write_text(json.dumps(state, indent=2) + '\n')
         temporary.replace(state_path)

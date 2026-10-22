@@ -154,3 +154,14 @@ events. Noninteractive output automatically selects plain mode. These modes have
 no controls. Missing/busy databases are reported and retried; the monitor never
 creates a database. Quitting does not stop either crawler. Output contains private
 crawl URLs and errors; keep terminal recordings and redirected logs private.
+
+### Stop controls in the private web dashboard
+
+Each active crawler card has its own Stop button. It verifies the saved worker
+identity, sends SIGINT (to the Zillow child before its launcher), and waits for
+its process and queue lock to finish. No force-kill or replacement is sent.
+The card reports Stopping while shutdown is pending. A manual maintenance marker
+keeps heartbeat monitoring from restarting it; the dashboard Restart button
+explicitly resumes that user pause. Other maintenance remains blocked.
+Logs, captures, terminal failures and failure streaks are retained. The other
+crawler and REL sessions are left running.

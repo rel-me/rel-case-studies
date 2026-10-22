@@ -374,15 +374,15 @@ async def bind_history_page(args, session):
     await asyncio.to_thread(observe)
 
 
-async def restore_search_form(page, activate, history_supported=True):
-    """Return one history entry to the form; never replay a submitted result."""
+async def restore_search_form(page, activate, history_supported=True, force_reload=False):
+    """Reuse normal history; retry via a fresh GET instead of trusting stale state."""
     def is_search():
         return urlsplit(page.url).hostname==urlsplit(SITE).hostname and urlsplit(page.url).path.lower().rstrip('/')=='/taxbills'
-    if is_search():
+    if not force_reload and is_search():
         await page.locator('#Parcel').wait_for(timeout=15000)
         return 'already_on_form'
     path=urlsplit(page.url).path.lower()
-    if history_supported and urlsplit(page.url).hostname==urlsplit(SITE).hostname and path in ('/taxbills/taxbills','/taxbills/taxbilldetails'):
+    if not force_reload and history_supported and urlsplit(page.url).hostname==urlsplit(SITE).hostname and path in ('/taxbills/taxbills','/taxbills/taxbilldetails'):
         await activate()
         response=await page.go_back(timeout=20000)
         if response and response.status in (401,403,429): raise CountyNavigationError(response.status)
@@ -448,15 +448,18 @@ async def crawl(args, db):
         apn = context.request.user_data['apn']
         with db:
             db.execute("UPDATE county_tax_targets SET status='running',attempts=attempts+1,error=NULL WHERE apn=?",(apn,))
-        async def search_form():
+        async def search_form(force_reload=False):
             try:
-                return await restore_search_form(page,lambda:bind_history_page(args,session),history_supported)
+                return await restore_search_form(page,lambda:bind_history_page(args,session),history_supported,force_reload=force_reload)
             except CountyNavigationError as error:
                 if error.status_code in (401,403,429):
                     context.request.no_retry=True
                     crawler.stop('County access denied; checkpoint retained')
                 raise
-        mode=await search_form()
+        # The adapter's cached URL/DOM can be stale after a timed-out action.
+        # Spend the existing Crawlee retry on one clean GET of the search form,
+        # not on waiting for an input on the previous results/detail page.
+        mode=await search_form(force_reload=context.request.retry_count > 0)
         print(json.dumps({'search_form':mode}),flush=True)
         async def reject_challenge():
             from selectolax.parser import HTMLParser
