@@ -1,3 +1,6 @@
 node_modules/
 .wrangler/
 __pycache__/
+
+# Local server snapshot; never commit or serve as a static asset.
+data/

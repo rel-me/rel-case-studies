@@ -8,16 +8,18 @@ import sqlite3
 
 
 def lookup(db, apn=None, unpaid=False, search=None, limit=50):
+    prefixed=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='county_tax_listed_bills'").fetchone()
+    prefix='county_tax_' if prefixed else ''
     clauses=[];params=[]
     if apn:
         clauses.append('b.apn=?');params.append(re.sub(r'[^0-9]','',apn))
     if unpaid: clauses.append('b.unpaid_installments>0')
     if search:
-        clauses.append('b.apn IN (SELECT apn FROM page_search WHERE page_search MATCH ?)');params.append(search)
+        clauses.append(f'b.apn IN (SELECT apn FROM {prefix}page_search WHERE {prefix}page_search MATCH ?)');params.append(search)
     where=' WHERE '+' AND '.join(clauses) if clauses else ''
-    rows=db.execute('''SELECT b.*,t.address,c.captured_at AS detail_captured_at,c.text AS detail_text,
-        h.captured_at AS history_captured_at FROM listed_bills b LEFT JOIN targets t USING(apn)
-        LEFT JOIN captures c ON c.id=b.detail_capture_id LEFT JOIN captures h ON h.id=b.history_capture_id'''
+    rows=db.execute(f'''SELECT b.*,t.address,c.captured_at AS detail_captured_at,c.text AS detail_text,
+        h.captured_at AS history_captured_at FROM {prefix}listed_bills b LEFT JOIN {prefix}targets t USING(apn)
+        LEFT JOIN {prefix}captures c ON c.id=b.detail_capture_id LEFT JOIN {prefix}captures h ON h.id=b.history_capture_id'''
         +where+' ORDER BY b.apn,b.fiscal_start DESC,b.title LIMIT ?',params+[limit])
     result=[]
     for row in rows:
@@ -43,7 +45,8 @@ def main():
     db=sqlite3.connect(args.database.resolve().as_uri()+'?mode=ro',uri=True);db.row_factory=sqlite3.Row
     try:
         if args.capture_id:
-            row=db.execute('SELECT html FROM captures WHERE id=?',(args.capture_id,)).fetchone()
+            prefix='county_tax_' if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='county_tax_captures'").fetchone() else ''
+            row=db.execute(f'SELECT html FROM {prefix}captures WHERE id=?',(args.capture_id,)).fetchone()
             if not row: parser.error('Capture not found')
             with args.html_output.open('x') as output: output.write(row['html'])
             print(json.dumps({'capture_id':args.capture_id,'saved_to':str(args.html_output)}))

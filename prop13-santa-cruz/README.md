@@ -9,12 +9,11 @@ amounts from capital values. It does not infer annual payments from assessments.
 
 ## Data
 
-The public snapshot contains 11,746 positive value estimates, 11,605 comparable
-assessments and 24 positive annual tax-history amounts. Annual tax histories are
-for 2025; value capture dates differ. Unknown assessment years stay unknown.
-These are third-party reported figures, not verified tax-payment receipts.
+The snapshot contains captured estimates and comparable assessments; counts and
+source years depend on the most recent local export. Unknown assessment years
+stay unknown. Bill and payment data remain private.
 
-Only the explicit public export is deployed. Raw SQLite databases, page captures,
+A sanitized server-side snapshot supports the public paginated API; it is not a static download. Raw SQLite databases, page captures,
 browser state, source-specific identifiers and the local crawl dashboard are
 excluded. The dashboard remains bound to loopback on port 8787.
 
@@ -24,8 +23,9 @@ Regenerate the export from a local capture database:
 python3 scripts/export_data.py --database /absolute/path/to/capture-database.sqlite3
 ```
 
-Read the source methodology in `public/index.html` and `data.json` metadata.
-`public/data.csv` contains the same public property records. No owner names are
+Read the methodology in `public/index.html`. The sanitized server snapshot is in
+`data/data.json`; its CSV companion is available locally for research requests.
+Neither file is in the static asset directory or exposed by an HTTP route. No owner names are
 included. The public site describes valuation observations generically as
 third-party estimates.
 
@@ -34,6 +34,8 @@ third-party estimates.
 ```sh
 npm ci
 PYTHON=/path/to/crawl-venv/bin/python npm test
+# Export the ignored server snapshot before preview/deploy:
+python3 scripts/export_data.py --database /absolute/path/to/capture-database.sqlite3 --output data
 npm run dev
 ```
 
@@ -57,9 +59,10 @@ the main website. Future main-site deployments do not include this dataset.
 ## Official county tax enrichment
 
 `scripts/crawl_county_taxes.py` visits the county's public Tax Collector lookup
-through REL, submits a parcel-number search, and opens **Show Tax Bill History**.
-It never clicks payment controls. A separate `Native` profile session in the
-`prop13-county-taxes` group uses no proxy. It leaves the valuation-crawl session
+through REL, submits a parcel-number search, and captures the current listing
+and latest annual bill detail without loading older history unnecessarily.
+It never clicks payment controls. A separate configured `Datacenter` profile session for the
+`prop13-county-taxes` collector retains its configured connection settings. It leaves the valuation-crawl session
 and source inventory database alone.
 
 The queue includes every matched residential parcel whose latest recorded
@@ -74,16 +77,25 @@ Use the crawler's existing Python environment (with `rel-crawlee`,
 ```sh
 python scripts/crawl_county_taxes.py \
   --inventory /absolute/path/to/capture-database.sqlite3 \
+  --tax-database /absolute/path/to/capture-database.sqlite3 \
   --output /absolute/path/to/private-output \
   --max-properties 12000 --rate 6
 ```
 
-Results are private in `county-tax.sqlite3`, with a separate persistent Crawlee
-queue and `county-session.json`. The original inventory database is opened
-read-only. A shared `run.lock` prevents concurrent inventory/tax crawlers when
-using the same output directory. Repeat the command to resume unfinished work;
-terminal failures are retained. Access denials and challenges stop the worker
-without proxy rotation; three consecutive terminal errors also stop it.
+The Zillow records and private county tax records can share the same SQLite
+file. County tables use the `county_tax_` prefix to avoid collisions; the
+Zillow inventory connection remains read-only. Pass that same file to
+`--inventory` and `--tax-database`. The Crawlee queue and REL session remain
+separate files in the private output directory. A shared `run.lock` prevents
+concurrent inventory/tax crawlers when using that directory. Repeat the command
+to resume unfinished work; terminal failures are retained. Access denials and
+challenges stop the worker without proxy rotation. The persisted failure streak
+stops collection after more than ten consecutive failed resources (the eleventh).
+
+For an older separate tax database, `scripts/merge_county_tax_database.py`
+copies its tables into the Zillow database with the `county_tax_` prefix and
+checks row counts. It preserves the source file as a rollback copy; after
+migration, use the Zillow database for active tax writes and lookups.
 Incomplete historical years and conflicting duplicate bills are retained as
 explicit review issues, not inferred or silently overwritten. Raw capture
 evidence is kept even when parsing fails. For example, the county can present
@@ -122,10 +134,10 @@ the capture time and can subsequently change at the county.
 Private lookups use standard Python and open the database read-only:
 
 ```sh
-python scripts/query_county_taxes.py --database /private/output/county-tax.sqlite3 --apn 009-123-26
-python scripts/query_county_taxes.py --database /private/output/county-tax.sqlite3 --unpaid
-python scripts/query_county_taxes.py --database /private/output/county-tax.sqlite3 --search '"Homeowners Exemption"'
-python scripts/query_county_taxes.py --database /private/output/county-tax.sqlite3 --capture-id 42 --html-output /private/bill-42.html
+python scripts/query_county_taxes.py --database /private/output/zillow.sqlite3 --apn 009-123-26
+python scripts/query_county_taxes.py --database /private/output/zillow.sqlite3 --unpaid
+python scripts/query_county_taxes.py --database /private/output/zillow.sqlite3 --search '"Homeowners Exemption"'
+python scripts/query_county_taxes.py --database /private/output/zillow.sqlite3 --capture-id 42 --html-output /private/bill-42.html
 ```
 
 The results include capture IDs, full detail text, history capture time and
@@ -163,7 +175,9 @@ County additions do not require an existing third-party estimate. Existing tax
 checkpoints and terminal failures are retained; Dougmar priority stays first.
 Set `--max-properties` appropriately for the larger queue.
 
-The public export accepts `--county-inventory` and `--county-taxes`. It uses the
+The public export accepts `--county-inventory` and `--county-taxes`; when tax
+tables are in the Zillow database, pass that same database for both
+`--database` and `--county-taxes`. It uses the
 county `CITYLIMITS` spatial field, falling back to the original GIS `SCCityLMT`
 flag for existing matches. It never derives jurisdiction from postal city.
 `in_santa_cruz_city` distinguishes Santa Cruz city from all other county areas;
@@ -177,3 +191,51 @@ paid amounts separately. County-only records can be searched without an estimate
 comparisons remain blank until an estimate exists. The export does not publish
 raw pages, temporary bill-link IDs, parcel IDs or owner fields. Inventory and tax
 collection coverage are reported separately from estimate coverage.
+
+## Map view
+
+The List / Map buttons share all comparison, address, jurisdiction and property-type
+filters. Map mode is linkable with `layout=map` alongside the existing `view`
+comparison parameter. The map uses locally served Leaflet 1.9.4 and
+Leaflet.markercluster 1.5.3 with OpenStreetMap raster tiles and visible attribution.
+Tiles load only in Map mode for the visible viewport, with normal browser caching.
+No address searches are sent to a geocoding service. Vendor licenses are served
+alongside the library files in `public/vendor`.
+
+The exporter includes validated latitude/longitude pairs and coordinate provenance
+from existing property records, with a county-area sanity check and recorded city parcel bounding-box centers as a fallback for missing or out-of-area coordinates. The map shows approximate points, not parcel
+boundaries. County-only records without coordinates remain in the list and count
+as unmapped; their locations are never guessed. Clusters show record counts,
+not average tax rates. Individual marker colors show the selected comparison
+ratio, with gray for unavailable estimates. Popup links open the same property
+details as the list. Future data refreshes must preserve coordinate fields and
+report missing-location coverage.
+
+## Bounded public access
+
+The exporter now defaults to `data/`, outside the `public/` asset directory.
+The Worker bundles this sanitized snapshot for server-side filtering and serves
+only allowlisted site assets. `/data.json`, `/data.csv`, source files and export
+routes return 404. There are no download controls in the public UI.
+
+The API returns at most 25 records per page. Oversized, nonnumeric and duplicate
+page-size parameters are rejected. Summary requests return aggregate statistics
+and ten featured chart records. The map returns up to 64 aggregate groups or
+25 minimal point references for the current viewport; full details are fetched
+one record at a time. API responses use `private, no-store` and have no CORS
+permission. A dedicated Cloudflare rate-limit binding allows 60 API requests per
+minute per client IP (an abuse deterrent, not an exact global quota or authentication).
+Displayed public information can still be copied through ordinary browsing.
+
+Keep this access model during data refreshes: run `scripts/export_data.py` with
+its default output or `--output data`, never `--output public`. Do not restore
+raw download routes, bulk client fetches or client-side CSV export.
+
+The county collector accepts `--max-consecutive-failures 10`: it skips exhausted
+resources and stops on the eleventh consecutive failed parcel, or immediately on
+an access restriction. A completed parcel resets the streak. The private
+`county-progress.json` keeps this streak and its stop reason across interrupted
+worker restarts; monitoring must honor a saved safety stop. Existing failed
+parcels are not automatically requeued.
+
+Tests use synthetic server snapshots and require no private export. Preview and deployment require the local `data/data.json` export; it is deliberately ignored by Git.

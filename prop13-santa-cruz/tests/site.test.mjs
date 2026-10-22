@@ -1,51 +1,64 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import worker from '../worker.js';
+import {createWorker} from '../lib/worker.js';
+import snapshot from './fixtures/snapshot.mjs';
+const worker=createWorker(snapshot);
 const BASE = '/case-studies/prop13-santa-cruz';
-import {selectRecords,histogram,choosePair} from '../public/app.js';
+import {selectRecords,assessedDifference,assessedDifferencePercent,assessedRatio,hasLocation,mapBand} from '../lib/study.js';
 
-const data=JSON.parse(fs.readFileSync(new URL('../public/data.json',import.meta.url)));
+const data=snapshot;
 
-test('public data uses evidence-backed amounts and internally consistent metrics',()=>{
+test('public data contains only assessed and estimated property values, not bill data',()=>{
   const m=data.metadata;
   assert.equal(data.records.filter(r=>r.estimated_value>0).length,m.with_estimate);
-  assert.equal(data.records.filter(r=>r.annual_tax!=null).length,m.with_annual_tax);
   assert.equal(data.records.filter(r=>r.assessed_value!=null).length,m.with_assessment);
   assert.equal(new Set(data.records.map(r=>r.record_id)).size,data.records.length);
   for(const r of data.records){
     assert.ok(r.estimated_value==null || r.estimated_value>0);
-    if(r.estimated_value==null){assert.equal(r.benchmark_gap,null);assert.equal(r.assessment_ratio,null);}
-    if(r.annual_tax!=null){assert.ok(r.tax_year);assert.ok(r.tax_captured_at);if(r.estimated_value>0)assert.ok(Math.abs(r.benchmark_gap-(r.estimated_value*.01-r.annual_tax))<.011);}
-    else {assert.equal(r.benchmark_gap,null);assert.equal(r.effective_tax_rate,null);}
+    assert.ok(r.assessed_value==null || r.assessed_value>0);
+    assert.equal(assessedDifference(r)==null,!(r.assessed_value>0&&r.estimated_value>0));
+    assert.equal(assessedDifferencePercent(r)==null,!(r.assessed_value>0&&r.estimated_value>0));
+    assert.equal(assessedRatio(r)==null,!(r.assessed_value>0&&r.estimated_value>0));
+    assert.equal(Object.keys(r).some(key=>/paid|installment|annual_tax|payment|bill/i.test(key)),false);
   }
+  assert.equal(Object.keys(m).some(key=>/paid|installment|annual_tax|payment|bill/i.test(key)),false);
 });
 
 test('public assets exclude provider branding, source identifiers and raw captures',()=>{
-  for(const file of fs.readdirSync(new URL('../public',import.meta.url))){
+  for(const file of fs.readdirSync(new URL('../public',import.meta.url),{recursive:true}).filter(file=>fs.statSync(new URL('../public/'+file,import.meta.url)).isFile())){
     const source=fs.readFileSync(new URL('../public/'+file,import.meta.url),'utf8');
     assert.doesNotMatch(source,/zillow|zestimate|zpid|session_id|oxylabs|localhost:8787|127\.0\.0\.1:8787/i,file);
   }
 });
 
-test('rankings handle exclusions, search, type filters and negative gaps',()=>{
-  const tax=selectRecords(data.records,'tax');
-  assert.equal(tax.length,data.metadata.with_annual_tax);
-  const comparable=tax.filter(r=>r.benchmark_gap!=null);assert.ok(comparable.every((r,i)=>!i||r.benchmark_gap<=comparable[i-1].benchmark_gap));
-  const address=tax[0].address;
-  assert.ok(selectRecords(data.records,'tax',address).some(r=>r.address===address));
-  assert.equal(selectRecords(data.records,'tax','no such address 192837465').length,0);
-  const rows=selectRecords(data.records,'assessment','','SINGLE_FAMILY','rate');
-  assert.ok(rows.every(r=>r.home_type==='SINGLE_FAMILY'));
-  assert.ok(rows.every((r,i)=>!i||r.assessment_ratio>=rows[i-1].assessment_ratio));
-  assert.equal(histogram(data.records).reduce((a,b)=>a+b,0),data.metadata.with_assessment_comparison ?? data.metadata.with_assessment);
+test('public comparison displays both source values and sortable differences',()=>{
+  const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+  const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+  assert.match(html,/<th[^>]*>Third-party estimate<\/th>/);
+  assert.match(html,/<th[^>]*>Assessed value for tax purposes<\/th>/);
+  assert.match(html,/<th[^>]*>Value difference/);
+  assert.match(html,/<th[^>]*>Percentage difference/);
+  assert.match(app,/assessment-gap/);
+  assert.match(app,/assessment-percent-gap/);
+  assert.match(app,/estimate minus assessed/);
+  assert.match(app,/share of estimate/);
+  assert.doesNotMatch(html,/County recorded paid|Annual tax billed|Annual tax comparisons/);
+  assert.doesNotMatch(app,/annual_paid|annual_tax|installment|payment status/i);
 });
 
-test('featured pair has same property category/year and estimates within 15 percent',()=>{
-  const pair=choosePair(data.records);assert.ok(pair);
-  assert.equal(pair[0].home_type,pair[1].home_type);
-  assert.equal(pair[0].tax_year,pair[1].tax_year);
-  assert.ok(Math.max(...pair.map(r=>r.estimated_value))/Math.min(...pair.map(r=>r.estimated_value))<=1.15);
+test('assessment comparisons retain address and property filters',()=>{
+  const rows=selectRecords(data.records,'assessment');
+  const comparable=rows.filter(r=>assessedDifference(r)!=null);assert.ok(comparable.every((r,i)=>!i||assessedDifference(r)<=assessedDifference(comparable[i-1])));
+  const address=rows[0].address;
+  assert.ok(selectRecords(data.records,'assessment',address).some(r=>r.address===address));
+  assert.equal(selectRecords(data.records,'assessment','no such address 192837465').length,0);
+  const singleFamily=selectRecords(data.records,'assessment','','SINGLE_FAMILY','rate');
+  assert.ok(singleFamily.every(r=>r.home_type==='SINGLE_FAMILY'));
+  const rateSorted=singleFamily.filter(r=>assessedRatio(r)!=null);
+  assert.ok(rateSorted.every((r,i)=>!i||assessedRatio(r)>=assessedRatio(rateSorted[i-1])));
+  const percentSorted=selectRecords(data.records,'assessment','','','assessment-percent-gap').filter(r=>assessedDifferencePercent(r)!=null);
+  assert.ok(percentSorted.every((r,i)=>!i||assessedDifferencePercent(r)<=assessedDifferencePercent(percentSorted[i-1])));
 });
 
 test('worker serves only allowlisted public study files and guards its route',async()=>{
@@ -61,9 +74,21 @@ test('worker serves only allowlisted public study files and guards its route',as
 });
 
  test('city-limit filtering uses boundary flags and retains missing-estimate records',()=>{
-  const rows=[{record_id:'a',address:'City',in_santa_cruz_city:true,assessed_value:1,assessment_gap:10},{record_id:'b',address:'County',in_santa_cruz_city:false,assessed_value:2,assessment_gap:null},{record_id:'c',address:'Unknown',in_santa_cruz_city:null,assessed_value:3,assessment_gap:5}];
+  const rows=[{record_id:'a',address:'City',in_santa_cruz_city:true,estimated_value:11,assessed_value:1},{record_id:'b',address:'County',in_santa_cruz_city:false,assessed_value:2},{record_id:'c',address:'Unknown',in_santa_cruz_city:null,estimated_value:8,assessed_value:3}];
   assert.deepEqual(selectRecords(rows,'assessment','','','gap','city').map(r=>r.record_id),['a']);
   assert.deepEqual(selectRecords(rows,'assessment','','','gap','outside').map(r=>r.record_id),['b']);
   assert.deepEqual(selectRecords(rows,'assessment','','','gap','unknown').map(r=>r.record_id),['c']);
   assert.deepEqual(selectRecords(rows,'assessment').map(r=>r.record_id),['a','c','b']);
+});
+
+test('map excludes absent or invalid locations and classifies the same two values',()=>{
+  assert.equal(hasLocation({latitude:null,longitude:null}),false);
+  assert.equal(hasLocation({latitude:36.98,longitude:-122.03}),true);
+  assert.equal(hasLocation({latitude:136,longitude:-122}),false);
+  assert.equal(hasLocation({latitude:44.315987,longitude:-98.43372}),false);
+  assert.equal(hasLocation({latitude:36,longitude:Infinity}),false);
+  assert.equal(mapBand({assessed_value:null,estimated_value:100000},'assessment'),'missing');
+  assert.equal(mapBand({assessed_value:250000,estimated_value:1000000}),'mid');
+  assert.equal(mapBand({assessed_value:1000000,estimated_value:1000000}),'full');
+  assert.equal(data.records.filter(hasLocation).length,data.metadata.with_location);
 });

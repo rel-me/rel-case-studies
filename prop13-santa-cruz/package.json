@@ -7,5 +7,9 @@
     "dev": "wrangler dev --port 8790",
     "deploy": "npm test && wrangler deploy"
   },
-  "devDependencies": { "wrangler": "4.126.0" }
+  "devDependencies": {
+    "leaflet": "1.9.4",
+    "leaflet.markercluster": "1.5.3",
+    "wrangler": "4.126.0"
+  }
 }

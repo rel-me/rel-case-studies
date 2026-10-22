@@ -94,12 +94,49 @@ def ingest(db, features, stamp, snapshot):
     return summary(db)
 
 
+def ingest_county(db, path):
+    """Add county residential targets, retaining city inventory and all outcomes."""
+    import sqlite3
+    from urllib.parse import quote
+    source=sqlite3.connect(path.resolve().as_uri()+'?mode=ro',uri=True)
+    source.row_factory=sqlite3.Row
+    try:
+        if not source.execute("SELECT 1 FROM inventory_state WHERE key='complete'").fetchone():
+            raise ValueError('County inventory is incomplete')
+        parcels=source.execute("SELECT * FROM parcels WHERE residential=1 AND trim(address)!='' ORDER BY object_id").fetchall()
+    finally:
+        source.close()
+    with db:
+        if 'postal_code' not in {r[1] for r in db.execute('PRAGMA table_info(inventory_addresses)')}:
+            db.execute('ALTER TABLE inventory_addresses ADD COLUMN postal_code TEXT')
+        prior=db.execute('SELECT id FROM inventory_runs WHERE snapshot_path=?',(str(path.resolve()),)).fetchone()
+        run_id=prior[0] if prior else db.execute('INSERT INTO inventory_runs(source_url,fetched_at,feature_count,snapshot_path) VALUES(?,?,?,?)',
+            (parcels[0]['source_url'] if parcels else '',datetime.now(timezone.utc).isoformat(),len(parcels),str(path.resolve()))).lastrowid
+        existing={re.sub(r'\D','',r[0] or '') for r in db.execute('SELECT apn FROM inventory_parcels')}
+        added=0
+        for row in parcels:
+            if row['apn'] in existing: continue
+            key='county:'+row['apn']
+            zip_code=(row['postal_code'] or '')[:5]
+            valid=bool(re.fullmatch(r'\d{5}',zip_code))
+            slug=re.sub(r'[^A-Za-z0-9-]+','-',f"{row['address']}-{row['postal_city']}-CA-{zip_code}").strip('-')
+            url='https://www.zillow.com/homes/'+quote(slug,safe='-')+'_rb/' if valid else None
+            db.execute('INSERT INTO inventory_addresses(address_key,address,lookup_url,status,reason,postal_code) VALUES(?,?,?,?,?,?) ON CONFLICT(address_key) DO NOTHING',
+                (key,row['address'],url,'pending' if valid else 'needs_review',None if valid else 'County address lacks a verified postal code',zip_code))
+            feature={'attributes':{'APN':row['apn'],'Address':row['address'],'UseCode':row['use_code'],
+                'SCCityLMT':'Yes' if row['in_santa_cruz_city']==1 else 'No' if row['in_santa_cruz_city']==0 else None},
+                'county_source':dict(row)}
+            db.execute('INSERT INTO inventory_parcels VALUES(?,?,?,?,?,?,?,?)',
+                (-row['object_id'],row['apn'],key,row['use_code'],None,'residential',run_id,json.dumps(feature)))
+            existing.add(row['apn']);added+=1
+    return {'county_residential_parcels':len(parcels),'added':added}
+
 def summary(db):
     return {'source': SOURCE, 'city_parcels': db.execute('SELECT count(*) FROM inventory_parcels').fetchone()[0],
             'parcel_classification': dict(db.execute('SELECT classification,count(*) FROM inventory_parcels GROUP BY classification')),
             'address_status': dict(db.execute("SELECT status,count(*) FROM inventory_addresses WHERE address_key IN "
                                              "(SELECT address_key FROM inventory_parcels WHERE classification='residential') GROUP BY status")),
-            'coverage_note': 'City GIS parcel-address inventory; individual dwelling-unit completeness unverified'}
+            'coverage_note': ('County residential parcel-address inventory; individual dwelling-unit completeness unverified' if db.execute("SELECT 1 FROM inventory_addresses WHERE address_key LIKE 'county:%' LIMIT 1").fetchone() else 'City GIS parcel-address inventory; individual dwelling-unit completeness unverified')}
 
 
 def export_addresses(db, path):

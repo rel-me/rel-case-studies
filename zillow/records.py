@@ -160,7 +160,8 @@ def parse(html, url):
 
 def database(path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    db = sqlite3.connect(path)
+    # County-tax and Zillow crawlers may write separate tables concurrently.
+    db = sqlite3.connect(path, timeout=30)
     db.row_factory = sqlite3.Row
     columns = {row[1] for row in db.execute('PRAGMA table_info(observations)')}
     if 'asking_price' in columns:
@@ -183,12 +184,19 @@ def save(db, requested, final, status, html, data):
     return cur.lastrowid
 
 
-def save_home(db, capture, url, facts):
+def save_home(db, capture, url, facts, county_inventory_key=None):
     if not facts:
         raise ValueError("No structured property record matching the requested ZPID; capture retained")
     address = facts['address']
     if str(address.get('city', '')).casefold() != 'santa cruz' or address.get('state') != 'CA':
-        raise ValueError("Property is outside the Santa Cruz, CA address scope")
+        county_target=None
+        if county_inventory_key and county_inventory_key.startswith('county:'):
+            county_target=db.execute("SELECT a.address,a.postal_code FROM inventory_addresses a JOIN inventory_parcels p USING(address_key) WHERE a.address_key=? AND p.classification='residential'",(county_inventory_key,)).fetchone()
+        from inventory import address_key
+        if (not county_target or address.get('state')!='CA'
+            or str(address.get('zipcode') or '')[:5]!=county_target['postal_code']
+            or address_key(address.get('streetAddress') or '')!=address_key(county_target['address'])):
+            raise ValueError("Property is outside the verified Santa Cruz County address scope")
     values = (str(facts['zpid']), url, address.get('streetAddress'), address.get('city'),
               address.get('state'), address.get('zipcode'), number(facts.get('latitude')),
               facts.get('longitude'), facts.get('homeType'), number(facts.get('bedrooms')),
