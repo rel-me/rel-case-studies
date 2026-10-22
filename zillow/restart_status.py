@@ -49,9 +49,9 @@ def capture_data(database,worker,baseline=0,started_at=None):
                 value=baseline if baseline is not None else started_at
                 saved=db.execute(f'SELECT COUNT(*) FROM {table} WHERE {where}',(value,)).fetchone()[0]
                 last=db.execute(f'SELECT {url},captured_at FROM {table} WHERE {where} ORDER BY id DESC LIMIT 1',(value,)).fetchone()
-                error=db.execute(f'SELECT error FROM {error_table} WHERE occurred_at>=? ORDER BY id DESC LIMIT 1',(started_at,)).fetchone()
+                error=db.execute(f'SELECT error,id FROM {error_table} WHERE occurred_at>=? ORDER BY id DESC LIMIT 1',(started_at,)).fetchone()
             else: saved=0;last=error=None
-            return dict(latest_id=maximum,saved=saved,latest_url=last[0] if last else None,latest_capture=last[1] if last else None,resource_error=clean(error[0]) if error else None)
+            return dict(latest_id=maximum,saved=saved,latest_url=last[0] if last else None,latest_capture=last[1] if last else None,resource_error=clean(error[0]) if error else None,resource_error_id=error[1] if error else None)
     except (OSError,sqlite3.Error): return empty
 
 
@@ -141,4 +141,5 @@ def describe(output,worker,database,run,progress,alive,queue_locked):
             'pid':attempt.get('pid') if attempt else run.get('pid'),'exit_code':code,
             'saved_pages':captures['saved'],'latest_url':captures['latest_url'],
             'last_capture':captures['latest_capture'],'queue_total':queue_total,
-            'error':clean(error) if error else None,'log_lines':useful[-12:] or lines[-8:]}
+            'error':clean(error) if error else None,
+            'error_id':captures.get('resource_error_id') if error==captures['resource_error'] else None,'log_lines':useful[-12:] or lines[-8:]}
