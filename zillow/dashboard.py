@@ -11,6 +11,7 @@ import re
 import sqlite3
 import subprocess
 import restart_status
+from crawl_controls import ControlError, stop_worker, USER_STOP
 from crawl_areas import AREAS, NOTE as AREA_NOTE, parcel_areas, address_areas, apn_key
 from urllib.parse import parse_qs, urlsplit
 
@@ -244,7 +245,7 @@ def _restart_saved_crawler(database, worker, tax_run_file=None):
         except BlockingIOError:
             raise ValueError('Another restart is already in progress') from None
         run = _read_state(run_path)
-        if run.get('maintenance'):
+        if run.get('maintenance') and run['maintenance'] != USER_STOP:
             raise ValueError('Crawler is under maintenance')
         if _pid_alive(run.get('pid')):
             raise ValueError('Crawler is already running or starting')
@@ -286,7 +287,7 @@ def _restart_saved_crawler(database, worker, tax_run_file=None):
             temporary.write_text(json.dumps(previous, indent=2) + '\n'); temporary.replace(progress_path)
             raise
         run.update(pid=process.pid, status='starting', started_at=now, stopped_at=None,
-                   stop_reason=None, consecutive_failures=0)
+                   stop_reason=None, consecutive_failures=0, maintenance=None, user_stop_requested_at=None)
         temporary = run_path.with_suffix('.dashboard.tmp')
         temporary.write_text(json.dumps(run, indent=2) + '\n'); temporary.replace(run_path)
         return {'status': 'starting', 'worker': worker}
@@ -324,7 +325,12 @@ def restart_progress_data(database,tax_database=None,tax_run_file=None):
         alive=_pid_alive(run.get('pid'))
         busy=worker_running(output) if worker=='zillow' else _county_worker_running(run_path)
         item=restart_status.describe(output,worker,(tax_database or database) if worker=='tax' else database,run,progress,alive,busy)
-        item['can_restart']=bool(not alive and not busy and not run.get('maintenance') and (run.get('launcher_command') if worker=='zillow' else run.get('command')))
+        item['can_restart']=bool(not alive and not busy and (not run.get('maintenance') or run['maintenance']==USER_STOP) and (run.get('launcher_command') if worker=='zillow' else run.get('command')))
+        item['can_stop']=bool(alive or busy)
+        item['stopping']=bool(run.get('maintenance')==USER_STOP and (alive or busy))
+        if run.get('maintenance')==USER_STOP:
+            item['phase']='stopping' if alive or busy else 'stopped'
+            item['message']='Stop requested. Waiting for the worker and queue lock to finish.' if alive or busy else 'Stopped by user. Restart resumes pending work.'
         result[worker]=item
     return result
 
@@ -499,17 +505,23 @@ def handler_for(database, tax_database=None, tax_run_file=None, county_inventory
             origin = self.headers.get('Origin')
             host = self.headers.get('Host', '')
             if origin != 'http://' + host or host != f'127.0.0.1:{self.server.server_port}' or self.headers.get('Content-Type') != 'application/json':
-                self.respond(403, b'{"error":"Restart must be requested from this dashboard."}', 'application/json')
+                self.respond(403, b'{"error":"Crawl controls must be requested from this dashboard."}', 'application/json')
                 return
-            routes = {'/api/restart/zillow': 'zillow', '/api/restart/tax': 'tax'}
+            routes = {'/api/restart/zillow': 'zillow', '/api/restart/tax': 'tax',
+                      '/api/stop/zillow': 'zillow', '/api/stop/tax': 'tax'}
             worker = routes.get(self.path)
             if not worker:
                 self.respond(404, b'{"error":"Not found"}', 'application/json')
                 return
             try:
-                data = restart_crawler(database, worker, tax_run_file)
+                if self.path.startswith('/api/stop/'):
+                    run_path=database.parent/'active-run.json' if worker=='zillow' else tax_run_file
+                    if not run_path: raise ValueError('Tax crawler is not configured')
+                    data=stop_worker(database.parent,worker,run_path)
+                else:
+                    data = restart_crawler(database, worker, tax_run_file)
                 self.respond(202, json.dumps(data).encode(), 'application/json')
-            except ValueError as error:
+            except (ValueError, ControlError) as error:
                 self.respond(409, json.dumps({'error': str(error)}).encode(), 'application/json')
             except (OSError, sqlite3.Error) as error:
                 self.respond(503, json.dumps({'error': str(error)}).encode(), 'application/json')

@@ -62,6 +62,23 @@ class LauncherTests(unittest.TestCase):
             self.assertTrue((output / 'zillow-run.lock').exists())
             county_lock.close()
 
+    def test_launcher_retains_manual_pause_written_during_child_shutdown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);app=root/'REL.app';app.mkdir()
+            def child(*args,**kwargs):
+                path=root/'output/active-run.json'
+                state=json.loads(path.read_text())
+                state.update(maintenance='Stopped by user from dashboard',user_stop_requested_at='now')
+                path.write_text(json.dumps(state))
+                return 130
+            with patch.object(launcher,'ROOT',root),patch.object(launcher,'APP',app), \
+                 patch.object(launcher,'wait_for_release'),patch.object(launcher.subprocess,'run'), \
+                 patch.object(launcher.subprocess,'call',side_effect=child):
+                self.assertEqual(launcher.run([]),130)
+            state=json.loads((root/'output/active-run.json').read_text())
+            self.assertEqual(state['maintenance'],'Stopped by user from dashboard')
+            self.assertEqual(state['status'],'stopped')
+
     def test_missing_app_does_not_start_crawler(self):
         with tempfile.TemporaryDirectory() as temp, \
              patch.object(launcher, 'APP', Path(temp) / 'missing.app'), \

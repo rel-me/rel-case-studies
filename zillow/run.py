@@ -73,6 +73,15 @@ def run(args):
         temporary.replace(state_path)
         with (output / 'zillow-crawl.log').open('a') as log_stream:
             exit_code = subprocess.call(command, cwd=ROOT, stdout=log_stream, stderr=subprocess.STDOUT)
+        # A dashboard Stop may set a pause while the child is finishing. Keep
+        # it when publishing the launcher exit instead of reviving automation.
+        try:
+            latest = json.loads(state_path.read_text())
+            if latest.get('pid') == state['pid']:
+                for key in ('maintenance', 'user_stop_requested_at'):
+                    if key in latest: state[key] = latest[key]
+        except (OSError, ValueError):
+            pass
         state.update(status='stopped', stopped_at=datetime.now(timezone.utc).isoformat(), exit_code=exit_code)
         temporary.write_text(json.dumps(state, indent=2) + '\n')
         temporary.replace(state_path)

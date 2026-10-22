@@ -152,6 +152,49 @@ class ControlTests(unittest.TestCase):
         self.assertEqual(self.read('active-run.json'),run)
         self.assertEqual((self.output/'zillow-progress.json').read_bytes(),before)
 
+    def test_stop_preserves_progress_and_only_interrupts_selected_worker(self):
+        for worker,run_name,script,progress in [('zillow','active-run.json','run.py','zillow-progress.json'),
+                                               ('tax','county-run.json','crawl_county_taxes.py','county-progress.json')]:
+            before=(self.output/progress).read_bytes()
+            actual=f'/usr/bin/python3 {self.output}/{script} --output {self.output}'
+            with patch.object(controls,'process_info',side_effect=[actual,'']), patch.object(controls,'interrupt_worker') as interrupt:
+                result=controls.stop_worker(self.output,worker)
+            self.assertEqual(result['status'],'stopped')
+            interrupt.assert_called_once_with(self.read(run_name)['pid'],script,self.output.resolve())
+            self.assertEqual(self.read(run_name)['maintenance'],controls.USER_STOP)
+            self.assertEqual((self.output/progress).read_bytes(),before)
+        self.popen.assert_not_called()
+
+    def test_stop_timeout_retains_pause_and_never_force_kills_or_starts(self):
+        actual=f'/usr/bin/python3 {self.output}/run.py --output {self.output}'
+        with patch.object(controls,'process_info',return_value=actual), patch.object(controls,'interrupt_worker') as interrupt, patch.object(controls.threading,'Thread') as watcher:
+            with self.assertRaisesRegex(controls.ControlError,'still finishing'):
+                controls.stop_worker(self.output,'zillow',timeout=0)
+        interrupt.assert_called_once()
+        watcher.return_value.start.assert_called_once()
+        self.assertEqual(self.read('active-run.json')['maintenance'],controls.USER_STOP)
+        self.assertEqual(self.read('active-run.json')['status'],'stopping')
+        self.popen.assert_not_called()
+
+    def test_stop_refuses_unrelated_pid_or_unowned_queue_lock(self):
+        with patch.object(controls,'process_info',return_value='/usr/bin/python3 other.py'), patch.object(controls,'interrupt_worker') as interrupt:
+            with self.assertRaisesRegex(controls.ControlError,'another process'):
+                controls.stop_worker(self.output,'zillow')
+            interrupt.assert_not_called()
+        with (self.output/'zillow-run.lock').open('a') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaisesRegex(controls.ControlError,'another worker'):
+                controls.stop_worker(self.output,'zillow')
+        self.assertNotIn('maintenance',self.read('active-run.json'))
+
+    def test_stop_preserves_existing_maintenance_and_safety_stop(self):
+        self.write('active-run.json',dict(self.read('active-run.json'),maintenance='repair'))
+        self.write('zillow-progress.json',{'stop_reason':'HTTP 403','consecutive_failures':11})
+        before=(self.output/'zillow-progress.json').read_bytes()
+        controls.stop_worker(self.output,'zillow')
+        self.assertEqual(self.read('active-run.json')['maintenance'],'repair')
+        self.assertEqual((self.output/'zillow-progress.json').read_bytes(),before)
+
     def test_real_fake_workers_start_and_restart_under_separate_locks(self):
         """Exercise actual subprocesses and SIGINT, never REL or the live queues."""
         import sys
@@ -188,3 +231,10 @@ with (out/name).open('a') as lock:
             self.assertNotEqual(self.read(run_name)['pid'],first)
             self.assertFalse(controls.process_info(first))
             self.assertEqual((self.output/progress).read_bytes(),before)
+
+            second=self.read(run_name)['pid']
+            controls.stop_worker(self.output,worker,timeout=5)
+            self.assertFalse(controls.process_info(second))
+            self.assertFalse(controls.queue_busy(self.output/('zillow-run.lock' if worker=='ZILLOW' else 'run.lock')))
+            self.assertEqual((self.output/progress).read_bytes(),before)
+            self.assertEqual(self.read(run_name)['maintenance'],controls.USER_STOP)

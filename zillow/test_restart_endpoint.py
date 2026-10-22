@@ -7,7 +7,8 @@ import sqlite3
 import tempfile
 import threading
 import unittest
-from urllib.request import urlopen
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
 from unittest.mock import Mock, patch
 
 import dashboard
@@ -32,6 +33,24 @@ class RestartEndpointTests(unittest.TestCase):
                 self.assertEqual(data['zillow']['exit_code'],1)
                 self.assertFalse(data['tax']['available'])
             finally: server.shutdown();server.server_close();thread.join()
+
+    def test_stop_routes_require_same_origin_and_dispatch_independently(self):
+        with tempfile.TemporaryDirectory() as directory:
+            database=Path(directory)/'zillow.sqlite3';tax_run=Path(directory)/'county-run.json'
+            server=ThreadingHTTPServer(('127.0.0.1',0),dashboard.handler_for(database,tax_run_file=tax_run))
+            thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+            base=f'http://127.0.0.1:{server.server_port}'
+            try:
+                with patch.object(dashboard,'stop_worker',return_value={'status':'stopped'}) as stop:
+                    for worker,run_path in [('zillow',Path(directory)/'active-run.json'),('tax',tax_run)]:
+                        request=Request(base+'/api/stop/'+worker,data=b'{}',headers={'Origin':base,'Content-Type':'application/json'})
+                        with urlopen(request,timeout=3) as response:self.assertEqual(response.status,202)
+                        stop.assert_called_with(Path(directory),worker,run_path)
+                    stop.reset_mock()
+                    request=Request(base+'/api/stop/tax',data=b'{}',headers={'Origin':'https://example.com','Content-Type':'application/json'})
+                    with self.assertRaises(HTTPError) as error:urlopen(request,timeout=3)
+                    self.assertEqual(error.exception.code,403);stop.assert_not_called()
+            finally:server.shutdown();server.server_close();thread.join()
 
     def test_zombie_worker_is_not_reported_as_alive(self):
         with patch.object(dashboard.subprocess,'run',return_value=Mock(stdout='Z')):

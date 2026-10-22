@@ -174,3 +174,64 @@ def control_worker(output,database,worker,timeout=45):
                 latest.update(status='stopped',exit_code=code,stopped_at=datetime.now(timezone.utc).isoformat());write_state(run_path,latest)
             raise ControlError(f'Startup exited with code {code}; see the error feed and {log_name}')
         return f'{"Restart" if restarted else "Start"} requested for {worker}; PID {process.pid}. Watch for saved URLs.'
+
+
+USER_STOP = 'Stopped by user from dashboard'
+
+
+def stop_worker(output, worker, run_path=None, timeout=45):
+    """Persist a manual pause and interrupt only this worker; never force-kill."""
+    output = Path(output).resolve()
+    worker = worker.upper()
+    if worker not in WORKERS:
+        raise ControlError('Unknown crawler')
+    run_name, lock_name, _, script, _, _ = WORKERS[worker]
+    run_path = Path(run_path) if run_path else output / run_name
+    lock_path = output / lock_name
+    with (output / 'dashboard-restart.lock').open('a') as guard:
+        try:
+            fcntl.flock(guard, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise ControlError('Another crawl control action is in progress') from None
+        run = read_state(run_path)
+        pid = run.get('pid')
+        actual = process_info(pid)
+        if actual and not owns_process(actual, script, output):
+            raise ControlError('Saved PID belongs to another process; refusing to stop it')
+        if not actual and queue_busy(lock_path):
+            raise ControlError('Queue lock is held by another worker; cannot safely identify it')
+        maintenance = run.get('maintenance') or USER_STOP
+        requested = datetime.now(timezone.utc).isoformat()
+
+        def persist(status):
+            # The launcher can update its run JSON while finishing; retain that
+            # metadata and reapply the manual pause so monitoring cannot resume it.
+            latest = read_state(run_path)
+            if latest.get('pid') != pid:
+                raise ControlError('Worker PID changed during stop; refusing to overwrite its state')
+            latest.update(maintenance=maintenance, user_stop_requested_at=requested, status=status)
+            if status == 'stopped':
+                latest['stopped_at'] = datetime.now(timezone.utc).isoformat()
+            write_state(run_path, latest)
+
+        persist('stopping' if actual else 'stopped')
+        if actual:
+            interrupt_worker(pid, script, output)
+            deadline = time.monotonic() + timeout
+            while process_info(pid) or queue_busy(lock_path):
+                persist('stopping')
+                if time.monotonic() >= deadline:
+                    def finish_stop():
+                        try:
+                            while process_info(pid) or queue_busy(lock_path):
+                                persist('stopping')
+                                time.sleep(1)
+                            persist('stopped')
+                        except (ControlError, OSError):
+                            return  # PID changed or dashboard/output was removed.
+                    threading.Thread(target=finish_stop,daemon=True).start()
+                    raise ControlError('Stop requested; worker is still finishing. It remains paused for monitoring; no force-kill was sent.')
+                time.sleep(0.2)
+            persist('stopped')
+        return {'status': 'stopped', 'worker': worker.lower(),
+                'message': 'Stopped by user. Queue and captures retained; Restart resumes pending work.'}
