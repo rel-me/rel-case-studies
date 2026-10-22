@@ -43,6 +43,24 @@ class LauncherTests(unittest.TestCase):
                 command = crawl.call_args.args[0]
                 self.assertEqual(command[-2:], ['--base-url', launcher.BASE_URL])
                 self.assertEqual(command[command.index('--max-pages') + 1], '3')
+                self.assertTrue((root / 'output' / 'zillow-crawl.log').exists())
+
+    def test_zillow_launcher_can_run_while_county_worker_owns_its_lock(self):
+        import fcntl
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            app = root / 'REL.app'
+            app.mkdir()
+            output = root / 'output'
+            output.mkdir()
+            county_lock = (output / 'run.lock').open('a')
+            fcntl.flock(county_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with patch.object(launcher, 'ROOT', root), patch.object(launcher, 'APP', app), \
+                 patch.object(launcher, 'wait_for_release'), patch.object(launcher.subprocess, 'run'), \
+                 patch.object(launcher.subprocess, 'call', return_value=0):
+                self.assertEqual(launcher.run(['--output', str(output), '--profile', 'Zillow']), 0)
+            self.assertTrue((output / 'zillow-run.lock').exists())
+            county_lock.close()
 
     def test_missing_app_does_not_start_crawler(self):
         with tempfile.TemporaryDirectory() as temp, \

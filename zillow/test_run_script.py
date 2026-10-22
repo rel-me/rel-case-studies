@@ -43,6 +43,15 @@ class RunScriptTests(unittest.TestCase):
         self.assertEqual(self.invoke('setup').returncode, 0)
         self.assertFalse(self.log.exists())
 
+    def test_dashboard_launches_without_installing_crawler_dependencies(self):
+        bootstrap = self.root / 'bootstrap'
+        bootstrap.write_text('#!/bin/sh\nprintf "%s\\n" "$PWD" "$@" > "$CALL_LOG"\n')
+        bootstrap.chmod(0o755)
+        self.env['PYTHON'] = str(bootstrap)
+        shutil.rmtree(self.root / '.venv')
+        self.assertEqual(self.invoke('dashboard', '--port', '8888').returncode, 0)
+        self.assertEqual(self.log.read_text().splitlines(), [str(self.root), 'dashboard.py', '--port', '8888'])
+
     def test_failed_install_does_not_mark_environment_ready(self):
         (self.root / '.venv/.installed').unlink()
         bootstrap = self.root / 'bootstrap'

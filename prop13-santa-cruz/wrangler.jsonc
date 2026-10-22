@@ -5,12 +5,27 @@
   "compatibility_date": "2026-09-01",
   "workers_dev": false,
   "preview_urls": false,
-  "routes": [{ "pattern": "rel.me/case-studies/prop13-santa-cruz*", "zone_name": "rel.me" }],
+  "routes": [
+    {
+      "pattern": "rel.me/case-studies/prop13-santa-cruz*",
+      "zone_name": "rel.me"
+    }
+  ],
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
     "run_worker_first": true,
     "html_handling": "none",
     "not_found_handling": "none"
-  }
+  },
+  "ratelimits": [
+    {
+      "name": "STUDY_RATE_LIMITER",
+      "namespace_id": "13172026",
+      "simple": {
+        "limit": 60,
+        "period": 60
+      }
+    }
+  ]
 }
