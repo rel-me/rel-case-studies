@@ -284,3 +284,49 @@ class ModernHistoryCompatibilityTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await county.restore_search_form(page,activate,history_supported=False),'form_reload')
         page.goto.assert_awaited_once_with(county.SEARCH,timeout=45000)
         page.go_back.assert_not_awaited();activate.assert_not_awaited()
+
+
+class RetrySearchFormTests(unittest.IsolatedAsyncioTestCase):
+    async def test_retry_reloads_even_when_cached_url_claims_search_form(self):
+        from unittest.mock import AsyncMock, Mock
+        page=Mock(url=county.SEARCH)
+        page.locator.return_value.wait_for=AsyncMock()
+        page.goto=AsyncMock(return_value=Mock(status=200));page.go_back=AsyncMock();activate=AsyncMock()
+        result=await county.restore_search_form(page,activate,force_reload=True)
+        self.assertEqual(result,'form_reload')
+        page.goto.assert_awaited_once_with(county.SEARCH,timeout=45000)
+        page.locator.return_value.wait_for.assert_awaited_once_with(timeout=15000)
+        page.go_back.assert_not_awaited();activate.assert_not_awaited()
+
+    async def test_retry_leaves_results_without_history_replay(self):
+        from unittest.mock import AsyncMock, Mock
+        for supported in (True,False):
+            with self.subTest(history_supported=supported):
+                page=Mock(url=county.SITE+'/Taxbills/TaxBills')
+                page.locator.return_value.wait_for=AsyncMock()
+                page.goto=AsyncMock(return_value=Mock(status=200));page.go_back=AsyncMock();activate=AsyncMock()
+                await county.restore_search_form(page,activate,supported,force_reload=True)
+                page.goto.assert_awaited_once_with(county.SEARCH,timeout=45000)
+                page.go_back.assert_not_awaited();activate.assert_not_awaited()
+
+    async def test_retry_navigation_access_denial_is_not_swallowed(self):
+        from unittest.mock import AsyncMock, Mock
+        for status in (401,403,429):
+            with self.subTest(status=status):
+                page=Mock(url=county.SEARCH)
+                page.goto=AsyncMock(return_value=Mock(status=status))
+                page.locator.return_value.wait_for=AsyncMock()
+                with self.assertRaises(county.CountyNavigationError) as error:
+                    await county.restore_search_form(page,AsyncMock(),force_reload=True)
+                self.assertEqual(error.exception.status_code,status)
+                page.locator.return_value.wait_for.assert_not_awaited()
+                page.goto.assert_awaited_once()
+
+    async def test_retry_timeout_propagates_without_an_extra_attempt(self):
+        from unittest.mock import AsyncMock, Mock
+        page=Mock(url=county.SEARCH)
+        page.goto=AsyncMock(return_value=Mock(status=200))
+        page.locator.return_value.wait_for=AsyncMock(side_effect=TimeoutError('search field missing'))
+        with self.assertRaises(TimeoutError):
+            await county.restore_search_form(page,AsyncMock(),force_reload=True)
+        page.goto.assert_awaited_once();page.locator.return_value.wait_for.assert_awaited_once()
