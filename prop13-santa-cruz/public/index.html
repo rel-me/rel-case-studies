@@ -3,56 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Santa Cruz County property taxes</title>
-  <meta name="description" content="Santa Cruz County property records: reported annual taxes, assessed values and third-party home-value estimates.">
+  <title>Property Tax Disparities: A Santa Cruz County Study</title>
+  <meta name="description" content="Compare Santa Cruz County assessed values for tax purposes with third-party property estimates.">
   <link rel="canonical" href="https://rel.me/case-studies/prop13-santa-cruz">
-  <meta property="og:title" content="Santa Cruz County property taxes">
-  <meta property="og:description" content="An open-data study of property taxes, assessed values and estimated home values in Santa Cruz.">
+  <meta property="og:title" content="Property Tax Disparities: A Santa Cruz County Study">
+  <meta property="og:description" content="A Santa Cruz County study comparing assessed values for tax purposes with third-party property estimates.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rel.me/case-studies/prop13-santa-cruz">
   <link rel="icon" href="/case-studies/prop13-santa-cruz/social.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/case-studies/prop13-santa-cruz/style.css">
-  <script type="module" src="/case-studies/prop13-santa-cruz/app.js"></script>
+  <link rel="stylesheet" href="/case-studies/prop13-santa-cruz/vendor/leaflet.css">
+  <link rel="stylesheet" href="/case-studies/prop13-santa-cruz/vendor/MarkerCluster.css">
+  <link rel="stylesheet" href="/case-studies/prop13-santa-cruz/style.css?v=combined-2">
+  <script type="module" src="/case-studies/prop13-santa-cruz/app.js?v=assessment-only-1"></script>
 </head>
 <body>
   <a href="#explore" class="skip">Skip to the data</a>
+  <header class="rel-case-header">
+    <div class="rel-case-header-inner">
+      <a class="rel-case-brand" href="https://rel.me/" aria-label="REL home"><img src="/case-studies/prop13-santa-cruz/rel-logo.png" width="26" height="26" alt=""><span>REL</span><span class="rel-case-context">Case studies</span></a>
+      <nav aria-label="Case study navigation">
+        <a href="https://rel.me/case-studies">Case studies</a>
+        <a href="https://rel.me/#quickstart">Quickstart</a>
+        <a href="https://docs.rel.me/">Docs <span aria-hidden="true">↗</span></a>
+        <a class="rel-case-download" href="https://rel.me/#download">Download REL</a>
+      </nav>
+    </div>
+  </header>
   <main class="wrap">
+    <details class="case-study-intro" open>
+      <summary>About REL case studies</summary>
+      <p>REL case studies are practical projects that show what REL can do. To share a case study or join a group helping one another conduct studies with REL, contact <a href="mailto:research@rel.me">research@rel.me</a>.</p>
+    </details>
+    <details id="research-notice" class="research-notice" open>
+      <summary>Research and responsible-use disclaimer <span class="notice-collapse" aria-hidden="true">Collapse</span><span class="notice-expand" aria-hidden="true">Expand</span></summary>
+      <div class="notice-content">
+        <p><strong>Research and advocacy.</strong> This project was conducted for research purposes and advocates for responsible and fair tax policy. It examines differences in property taxation to inform public discussion.</p>
+        <p><strong>Factual data and fair use.</strong> Collecting factual information for research can be lawful. In the United States, <a href="https://www.copyright.gov/help/faq/faq-protect.html">facts themselves are not protected by copyright</a>; research uses of copyrighted material may qualify as <a href="https://www.copyright.gov/fair-use/">fair use, assessed case by case</a>. Research purpose alone does not make every crawl lawful. Access restrictions, website terms and other applicable laws still matter, and rules vary by jurisdiction. This is general information, not legal advice.</p>
+        <p><strong>Responsible crawling.</strong> Crawling should not impair a source site’s availability, performance or functionality for other users. Use conservative request rates and concurrency, respect access restrictions and verification challenges, and pause or stop collection if it causes disruption or the site asks you to stop.</p>
+        <p><strong>Policy, not personal blame.</strong> This site does not seek to target any particular homeowner. <a href="https://www.boe.ca.gov/info/milestones.htm">Proposition 13 is a statewide policy adopted by California voters in 1978</a>. Individual homeowners are not to blame for the rules or the differences shown here. These are collective policy choices; examining and improving them is our shared responsibility as voters and a community. Do not use these records to harass, shame or single out a household.</p>
+        <p><strong>What property taxes pay for.</strong> Property taxes help fund public schools and community colleges, county and city services, and special districts. These support services such as fire protection, public safety, libraries and parks. Allocations vary by location. See the <a href="https://www.lao.ca.gov/LAOEconTax/Article/Detail/155">California Legislative Analyst’s Office overview of local services and property-tax revenue</a>.</p>
+      </div>
+    </details>
     <header class="page-header">
-      <h1>Santa Cruz County property taxes</h1>
-      <p>County property taxes, assessed values, and third-party home-value estimates. Filter by Santa Cruz city limits or the rest of the county.</p>
-      <p class="coverage-line"><span id="estimate-count">…</span> estimates · <span id="assessment-count">…</span> assessments · <span id="tax-count">…</span> annual tax records · Snapshot <span id="snapshot">…</span></p>
-      <div class="links"><a href="/case-studies/prop13-santa-cruz/data.csv" download>Download CSV</a><a href="#methods">Methods and sources</a></div>
+      <h1>Property Tax Disparities: A Santa Cruz County Study</h1>
+      <p>Compare county assessed values for tax purposes with third-party property estimates. Filter by Santa Cruz city limits or the rest of the county.</p>
+      <p class="coverage-line"><span id="estimate-count">…</span> estimates · <span id="assessment-count">…</span> assessments · Snapshot <span id="snapshot">…</span></p>
+      <div class="links"><a href="#methods">Methods and sources</a></div>
     </header>
-    <div id="load-error" class="error" role="alert" hidden>Data could not be loaded. Refresh or <a href="/case-studies/prop13-santa-cruz/data.csv">download the CSV</a>.</div>
+    <div id="load-error" class="error" role="alert" hidden>Data could not be loaded. Refresh to try again.</div>
     <section id="explore" aria-label="Property records">
-      <div class="tabs" role="tablist" aria-label="Comparison"><button role="tab" id="tax-tab" aria-selected="true" aria-controls="data-panel" data-mode="tax">Annual tax <span id="tax-tab-count"></span></button><button role="tab" id="assessment-tab" aria-selected="false" aria-controls="data-panel" data-mode="assessment" tabindex="-1">Assessed value <span id="assessment-tab-count"></span></button></div>
-      <div id="data-panel" role="tabpanel" aria-labelledby="tax-tab"><p id="mode-note" class="mode-note"></p><div class="controls"><label class="search-label"><span class="sr-only">Search address, city or ZIP code</span><input id="search" type="search" placeholder="Search address or ZIP code" autocomplete="off"></label><label><span class="sr-only">Location</span><select id="location"><option value="">All Santa Cruz County</option><option value="city">Santa Cruz city limits</option><option value="outside">Outside Santa Cruz city</option><option value="unknown">Boundary unknown</option></select></label><label><span class="sr-only">Property type</span><select id="home-type"><option value="">All property types</option></select></label><label><span class="sr-only">Sort records</span><select id="sort"></select></label></div><div class="table-meta"><p id="result-count" role="status" aria-live="polite">Loading records…</p><button id="download-view" class="text-button">Download filtered CSV ↓</button></div><div class="table-scroll"><table><caption class="sr-only" id="table-caption">Property comparisons</caption><thead><tr><th scope="col">Rank / Property</th><th scope="col" class="numeric">Estimated value</th><th scope="col" class="numeric" id="amount-heading">Annual tax</th><th scope="col" class="numeric" id="ratio-heading">Tax / estimate</th><th scope="col" class="numeric" id="gap-heading">Gap to 1% benchmark</th></tr></thead><tbody id="records"></tbody></table></div><div id="empty" class="empty" hidden>No matching properties. Try a different address, location, or property type.</div><div class="pagination"><span id="page-label"></span><div><button id="previous" disabled>← Previous</button><button id="next" disabled>Next →</button></div></div></div>
-    </section>
-    <section class="chart-section" aria-labelledby="tax-title">
-      <h2 id="tax-title">Annual tax comparisons</h2>
-      <p>Ten properties with the largest difference between reported annual tax and 1% of estimated value. This reference is not an amount owed.</p>
-      <div class="legend"><span><i class="reported"></i>Annual tax</span><span><i class="benchmark"></i>1% of estimated value</span></div>
-      <div id="tax-chart" class="tax-chart" aria-label="Largest annual tax benchmark gaps"></div>
-      <p class="caption" id="tax-chart-note"></p>
-    </section>
-    <section class="chart-section" aria-labelledby="assessment-title">
-      <h2 id="assessment-title">Assessed value relative to estimated value</h2>
-      <p>Number of properties in each ten-percentage-point band. 100% means the assessment equals the estimate.</p>
-      <figure><div id="distribution" class="chart" role="img" aria-label="Assessment-to-estimate ratios"></div><div class="chart-key"><span></span></div></figure>
+      <div id="data-panel"><p id="mode-note" class="mode-note"></p><div class="controls"><label class="search-label"><span class="sr-only">Search address, city or ZIP code</span><input id="search" type="search" placeholder="Search address or ZIP code" autocomplete="off"></label><label><span class="sr-only">Location</span><select id="location"><option value="">All Santa Cruz County</option><option value="city">Santa Cruz city limits</option><option value="outside">Outside Santa Cruz city</option><option value="unknown">Boundary unknown</option></select></label><label><span class="sr-only">Property type</span><select id="home-type"><option value="">All property types</option></select></label><label><span class="sr-only">Sort records</span><select id="sort"></select></label></div><div class="view-switch" role="group" aria-label="Display records"><button id="list-view" aria-pressed="true">List</button><button id="map-view" aria-pressed="false">Map</button></div><div class="table-meta"><p id="result-count" role="status" aria-live="polite">Loading records…</p></div><div id="map-panel" hidden><div class="map-toolbar"><p id="map-status" role="status" aria-live="polite"></p><button id="fit-map">Fit results</button></div><div id="property-map" role="region" aria-label="Map of filtered property records"></div><div id="map-legend" class="map-legend" aria-label="Map color legend"></div><p id="map-error" class="error" role="status" hidden>Background map unavailable. Property markers still work; use List for all records.</p><p class="caption">Points show approximate recorded locations, not parcel boundaries. Numbered circles show aggregate counts. Zoom in to browse up to 25 property markers at a time. Map tiles load from OpenStreetMap only when Map is selected. <a href="https://www.openstreetmap.org/fixthemap">Report a base-map issue</a>.</p></div><div id="list-panel"><div class="table-scroll"><table><caption class="sr-only" id="table-caption">Property comparisons</caption><thead><tr><th scope="col">Rank / Property</th><th scope="col" class="numeric">Third-party estimate</th><th scope="col" class="numeric">Assessed value for tax purposes</th><th scope="col" class="numeric">Value difference<br><span class="column-note">estimate minus assessed</span></th><th scope="col" class="numeric">Percentage difference<br><span class="column-note">as a share of estimate</span></th></tr></thead><tbody id="records"></tbody></table></div><div id="empty" class="empty" hidden>No matching properties. Try a different address, location, or property type.</div><div class="pagination"><span id="page-label"></span><div><button id="previous" disabled>← Previous</button><button id="next" disabled>Next →</button></div></div></div></div>
     </section>
     <details id="methods" class="methods">
       <summary>Methods and sources</summary>
       <div class="method-content">
         <p id="coverage-detail"></p><p id="coverage-outcomes"></p>
-        <p><strong>Sources.</strong> Estimates come from a third-party property website. Assessment and tax sources are listed in each property record. County-sourced records are labeled individually and show amounts billed separately from recorded payments. Other tax amounts come from the third-party website and do not establish payment. County collection is in progress. The address inventory comes from Santa Cruz County parcel records.</p>
-        <p><strong>Geography.</strong> City-limit flags use the county parcel boundary field, or the original city GIS flag where the county match is unavailable. Mailing-city names do not establish jurisdiction. Outside Santa Cruz city includes other municipalities and unincorporated areas. County inventory coverage is broader than completed tax and estimate collection.</p>
-        <p><strong>Calculations.</strong> Assessment difference = estimated value minus assessed value. Annual tax difference = 1% of estimated value minus reported annual tax. Ratios divide the reported assessment or tax by the estimate. The 1% reference excludes local debt, fixed charges, exemptions and supplemental assessments.</p>
-        <p><strong>Limitations.</strong> Estimates are not appraisals. Tax years and estimate dates can differ; assessment years are often unavailable. Missing values are excluded, not estimated. Address matching, duplicate units and multi-parcel properties can affect comparisons. The tax subset is not a random sample. Differences cannot be attributed entirely to Proposition 13.</p>
+        <p><strong>Sources.</strong> Estimates come from a third-party property website. County assessments come from Santa Cruz County records where available; other assessments come from the third-party source. The address inventory comes from Santa Cruz County parcel records.</p>
+        <p><strong>Map locations.</strong> Points use recorded third-party property coordinates within a broad county-area bounding box, with recorded city parcel centers as a fallback. Parcel centers are approximate, not rooftop locations. Properties without coordinates remain in the list and are counted as unmapped; no address geocoding or location guesses are used. Each marker represents one property with an estimate, an assessed value, or both. Map colors group assessed value relative to the third-party estimate.</p>
+        <p><strong>Geography.</strong> City-limit flags use the county parcel boundary field, or the original city GIS flag where the county match is unavailable. Mailing-city names do not establish jurisdiction. Outside Santa Cruz city includes other municipalities and unincorporated areas. County inventory coverage is broader than current estimate and assessment coverage.</p>
+        <p><strong>Comparison.</strong> The site places the county assessed value for tax purposes beside a third-party property estimate. The two values may come from different dates. Estimates are not appraisals, and missing values are left blank.</p>
+        <p><strong>Limitations.</strong> Address matching, duplicate units and multi-parcel properties can affect comparisons. The available records are not a random sample. Differences cannot be attributed entirely to Proposition 13.</p>
         <p><strong>Proposition 13.</strong> California generally limits annual assessed-value growth to no more than 2%, with reassessment commonly triggered by a change in ownership or new construction. Individual acquisition histories are not established by this dataset.</p>
-        <div class="sources"><a href="https://sccgis.santacruzcountyca.gov/server/rest/services/giswebp/MapServer/25">County parcel records</a><a href="https://www.boe.ca.gov/proptaxes/pdf/pub29.pdf">California property-tax overview</a><a href="/case-studies/prop13-santa-cruz/data.json" download>Data and metadata (JSON)</a></div>
+        <div class="sources"><a href="https://sccgis.santacruzcountyca.gov/server/rest/services/giswebp/MapServer/25">County parcel records</a><a href="https://www.boe.ca.gov/proptaxes/pdf/pub29.pdf">California property-tax overview</a></div>
       </div>
     </details>
   </main>
-  <dialog id="detail"><div class="dialog-top"><button id="close-detail" aria-label="Close property details">Close ×</button></div><h2 id="detail-title"></h2><p id="detail-subtitle"></p><dl id="detail-fields"></dl><p class="detail-note">Sources and dates are listed for each value. Tax and estimate dates may differ. A benchmark difference is not unpaid tax or an amount owed.</p></dialog>
+  <dialog id="detail"><div class="dialog-top"><button id="close-detail" aria-label="Close property details">Close ×</button></div><h2 id="detail-title"></h2><p id="detail-subtitle"></p><dl id="detail-fields"></dl><p class="detail-note">The assessment and estimate may come from different dates.</p></dialog>
+  <script src="/case-studies/prop13-santa-cruz/vendor/leaflet.js"></script>
+  <script src="/case-studies/prop13-santa-cruz/vendor/leaflet.markercluster.js"></script>
 </body>
 </html>

@@ -8,33 +8,24 @@ module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
 
 
 class TaxEvidenceTests(unittest.TestCase):
-    def test_assessment_and_generic_rate_never_become_a_payment(self):
-        self.assertIsNone(module.tax_record({'taxAssessedValue':200000,'propertyTaxRate':1.1},'2026-10-16T00:00:00+00:00'))
+    def test_bulk_exports_cannot_target_the_deployed_asset_directory(self):
+        with self.assertRaisesRegex(ValueError, 'public assets'):
+            module.export(Path('unused.sqlite3'), path.parents[1] / 'public')
 
-    def test_latest_positive_tax_ignores_null_and_future_entries(self):
-        facts={'taxHistory':[
-            {'time':1791149429711,'taxPaid':None,'value':100000},
-            {'time':1759613429711,'taxPaid':2000,'value':98000},
-            {'time':1728077429711,'taxPaid':1800,'value':96000},
-            {'time':1893456000000,'taxPaid':9000,'value':1000000}]}
-        record=module.tax_record(facts,'2026-10-16T00:00:00+00:00')
-        self.assertEqual(record['annual_tax'],2000)
-        self.assertEqual(record['tax_year'],2025)
-        self.assertEqual(record['tax_assessed_value'],98000)
-
-    def test_rates_and_benchmarks_have_consistent_units(self):
-        result=module.metrics(1000000,200000,3000)
-        self.assertEqual(result['assessment_gap'],800000)
-        self.assertEqual(result['assessment_ratio'],.2)
-        self.assertEqual(result['effective_tax_rate'],.003)
-        self.assertEqual(result['benchmark_gap'],7000)
-        self.assertIsNone(module.metrics(1000000,None,None)['benchmark_gap'])
-        self.assertLess(module.metrics(1000000,1200000,15000)['benchmark_gap'],0)
-        self.assertTrue(all(v is None for v in module.metrics(None,200000,3000).values()))
-
+    def test_coordinates_require_a_valid_pair_and_keep_source(self):
+        self.assertEqual(module.coordinates(None, -122)['latitude'], None)
+        self.assertEqual(module.coordinates(91, -122)['longitude'], None)
+        self.assertEqual(module.coordinates(True, -122)['latitude'], None)
+        self.assertIsNone(module.coordinates(44.315987, -98.43372)['latitude'])
+        parcel = module.parcel_coordinates({'geometry': {'rings': [[[-122.03,36.98],[-122.02,36.99],[-122.03,36.98]]]}})
+        self.assertEqual(parcel['latitude'], 36.985)
+        self.assertIn('parcel GIS', parcel['coordinate_source'])
+        point = module.coordinates(36.98123456, -122.03123456)
+        self.assertEqual(point['latitude'], 36.981235)
+        self.assertEqual(point['coordinate_source'], 'Third-party property website')
 
 class CountyExportTests(unittest.TestCase):
-    def test_county_only_record_keeps_payment_provenance_without_inventing_estimate(self):
+    def test_public_export_shows_assessment_without_bill_or_payment_fields(self):
         import sqlite3,tempfile,json,io
         from contextlib import redirect_stdout
         with tempfile.TemporaryDirectory() as directory:
@@ -50,17 +41,39 @@ class CountyExportTests(unittest.TestCase):
             db.execute('INSERT INTO observations VALUES(?,?,?,?)',(1,'one',1000000,json.dumps({'taxAssessedValue':200000})))
             db.execute('INSERT INTO inventory_parcels VALUES(?,?,?,?)',('a','00114135',json.dumps({'attributes':{'SCCityLMT':'Yes'}}),'residential'));db.commit();db.close()
             spec=importlib.util.spec_from_file_location('county',path.with_name('crawl_county_taxes.py'));county=importlib.util.module_from_spec(spec);spec.loader.exec_module(county)
-            taxpath=root/'tax.sqlite3';tax=county.init_database(taxpath)
-            tax.execute("INSERT INTO targets(apn,zpid,address) VALUES('02625202','','1215 DOUGMAR DR')")
+            taxpath=source;tax=county.init_database(taxpath)
+            tax.execute("INSERT INTO county_tax_targets(apn,zpid,address) VALUES('02625202','','1215 DOUGMAR DR')")
             capture=county.save_capture(tax,'02625202','https://ttc.co.santa-cruz.ca.us/TaxBills/','<p>history</p>','history')
-            tax.execute('INSERT INTO bills VALUES(?,?,?,?,?,?,?,?,?)',('02625202',2025,2026,'10000.00','5000.00',0,'[]',None,capture))
+            tax.execute('INSERT INTO county_tax_bills VALUES(?,?,?,?,?,?,?,?,?)',('02625202',2025,2026,'10000.00','5000.00',0,'[]',None,capture))
             detail=county.save_capture(tax,'02625202','https://ttc.co.santa-cruz.ca.us/TaxBills/','<p>TOTAL VALUE $700,000 LESS EXEMPTION</p>','bill_detail')
-            tax.execute("INSERT INTO listed_bills(apn,bill_key,bill_type,fiscal_start,detail_status,detail_capture_id) VALUES('02625202','test','Annual Tax Bill',2025,'complete',?)",(detail,));tax.commit();tax.close()
-            with redirect_stdout(io.StringIO()): module.export(source,root/'public',county_taxes=taxpath)
+            tax.execute("INSERT INTO county_tax_listed_bills(apn,bill_key,bill_type,fiscal_start,detail_status,detail_capture_id) VALUES('02625202','test','Annual Tax Bill',2025,'complete',?)",(detail,));tax.commit();tax.close()
+            county_path=root/'county.sqlite3';county_db=sqlite3.connect(county_path)
+            county_db.execute('CREATE TABLE parcels(apn TEXT,address TEXT,postal_city TEXT,postal_code TEXT,municipality TEXT,in_santa_cruz_city INTEGER,residential INTEGER)')
+            county_db.execute('CREATE TABLE inventory_state(key TEXT,value TEXT)')
+            county_db.execute("INSERT INTO parcels VALUES('02625202','1215 DOUGMAR DR','SANTA CRUZ','95062-2914','n/a',0,1)")
+            county_db.execute("INSERT INTO inventory_state VALUES('complete','true')")
+            county_db.commit();county_db.close()
+            supplement_path=root/'dougmar-zillow'/'zillow.sqlite3';supplement_path.parent.mkdir()
+            supplement=sqlite3.connect(supplement_path)
+            supplement.executescript('''CREATE TABLE homes(zpid TEXT,address TEXT,city TEXT,state TEXT,postal_code TEXT,latitude REAL,longitude REAL,home_type TEXT);
+              CREATE TABLE captures(id INTEGER,captured_at TEXT);
+              CREATE TABLE observations(capture_id INTEGER,zpid TEXT,zestimate REAL);
+              INSERT INTO homes VALUES('z1','1215 Dougmar Dr','Santa Cruz','CA','95062',36.97,-122.02,'SINGLE_FAMILY');
+              INSERT INTO captures VALUES(1,'2026-10-17T00:00:00+00:00');
+              INSERT INTO observations VALUES(1,'z1',1400000);
+              CREATE VIEW latest_homes AS SELECT h.*,o.zestimate,c.captured_at FROM homes h JOIN observations o USING(zpid) JOIN captures c ON c.id=o.capture_id;''')
+            supplement.commit();supplement.close()
+            # The default county export discovers the private Dougmar supplement without changing
+            # the read-only source database or adding bill fields to the public snapshot.
+            with redirect_stdout(io.StringIO()): module.export(source,root/'public',county_inventory=county_path,county_taxes=taxpath)
             data=json.loads((root/'public/data.json').read_text());record=next(r for r in data['records'] if r['address']=='1215 DOUGMAR DR')
-            self.assertIsNone(record['estimated_value']);self.assertIsNone(record['benchmark_gap']);self.assertIsNone(record['in_santa_cruz_city'])
-            self.assertEqual(record['assessed_value'],700000);self.assertEqual(record['annual_paid'],5000);self.assertEqual(record['fiscal_year'],'2025–26')
-            self.assertEqual(data['metadata']['with_estimate'],1);self.assertEqual(len(data['records']),2)
+            self.assertEqual(record['estimated_value'],1400000);self.assertFalse(record['in_santa_cruz_city'])
+            self.assertEqual(record['assessed_value'],700000)
+            self.assertEqual(record['assessment_source'],'Santa Cruz County Tax Collector')
+            self.assertEqual(record['latitude'],36.97)
+            self.assertFalse({'apn','zpid','owner','source_url'} & record.keys())
+            self.assertFalse({'annual_tax','annual_paid','fully_paid','installments','county_installments','fiscal_year','payment_status'} & record.keys())
+            self.assertEqual(data['metadata']['with_estimate'],2);self.assertEqual(len(data['records']),2)
 
 
 if __name__=='__main__': unittest.main()

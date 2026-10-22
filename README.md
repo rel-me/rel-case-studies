@@ -6,15 +6,33 @@ and the [public REL tools documentation](https://github.com/rel-me/rel-tools).
 
 Each case study documents its runtime: a crawler launcher or a native REL Action.
 
-## Zillow / Santa Cruz
+> [!WARNING]
+> **READ BEFORE RUNNING: WEBSITE TERMS AND LEGAL COMPLIANCE**
+>
+> Crawling, scraping, or automated access may violate a website's Terms of
+> Service. Before using this case study, review and comply with each source
+> website's current terms, access policies, and all applicable laws and
+> regulations, including privacy, data protection, and intellectual property
+> requirements. Obtain any required permission before collecting or reusing data.
+>
+> Respect access restrictions, rate limits, and requests to stop. Do not use
+> proxies to bypass restrictions or access data without authorization. Publicly
+> accessible data does not automatically grant permission to collect, store, or
+> redistribute it. You are responsible for ensuring your use is permitted;
+> this example does not grant permission or constitute legal advice.
 
-[Read the case study and run the crawler](zillow/README.md). Match official parcel addresses to Zillow, retaining property facts and source captures in SQLite.
+## Zillow property research with REL
 
-```sh
-./zillow/run.sh
-```
+[Research Santa Cruz properties with a native REL Action](zillow/README.md).
+Import the supplied [Action JSON](zillow/ACTION.json) in **Settings → Actions**,
+then use it in an existing session or a new session with an optional Profile.
+REL produces a sourced property report in chat; no scripts or custom Profile
+are required for the Action.
 
-Requires Release REL.app, Python 3.11+, Git, and an OxylabsDatacenter Profile. Local data and credentials are not committed.
+The separate [inventory crawler](zillow/CRAWLER.md) remains available for official
+GIS address matching, persistent queues, and SQLite storage.
+Reusable [session/proxy rotation rules](SESSION_PROXY_ROTATION.md) describe
+bounded recovery and checkpoint handling for REL crawlers.
 
 ## Facebook Marketplace / Santa Cruz
 

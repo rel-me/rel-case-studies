@@ -1,139 +1,156 @@
-# Zillow research from Santa Cruz's official parcel inventory
+# Zillow property research with REL Actions
 
-The city GIS provides the address inventory. `rel-crawlee` performs Zillow
-lookups through one persistent REL session. SQLite stores the official source
-records, lookup outcomes, rendered captures, and property observations.
+Import [ACTION.json](ACTION.json) into REL to research up to 20 Santa Cruz
+properties and produce a sourced report in the session chat. REL owns the
+browser session, AI execution, and run history. A custom **Profile is optional**.
 
-## Run
+> [!WARNING]
+> **READ BEFORE RUNNING: WEBSITE TERMS AND LEGAL COMPLIANCE**
+>
+> Crawling, scraping, or automated access may violate a website's Terms of
+> Service. Before using this case study, review and comply with each source
+> website's current terms, access policies, and all applicable laws and
+> regulations, including privacy, data protection, and intellectual property
+> requirements. Obtain any required permission before collecting or reusing data.
+>
+> Respect access restrictions, rate limits, and requests to stop. Do not use
+> proxies to bypass restrictions or access data without authorization. Publicly
+> accessible data does not automatically grant permission to collect, store, or
+> redistribute it. You are responsible for ensuring your use is permitted;
+> this example does not grant permission or constitute legal advice.
 
-Install `/Applications/REL.app` and configure the **OxylabsDatacenter** Profile:
+## Set up in REL
 
-```sh
-./zillow/run.sh
-./zillow/run.sh --max-addresses 10000 --max-pages 20000
-```
+1. Use a REL build with **Settings → Actions → Import Action** and configure a
+   working AI provider/model.
+2. Open **REL → Settings → Actions → Import Action** and paste the complete
+   contents of [ACTION.json](ACTION.json).
+3. Select **Santa Cruz Zillow property research** and choose **Use Action**.
+4. Choose an existing **Session**, or **New session**. For a new session, leave
+   **Profile → REL default** selected or optionally choose your own Profile.
+   Existing sessions keep their current browser configuration.
+5. Click **Add Action**. Review the setup checklist and the installed steps in
+   the session's **Actions** panel. Imported actions start disabled.
+6. Review the session model, keep **When → Manual** and **On Error → Stop**,
+   then enable the Action and use its context menu → **Run Now**.
 
-The first run imports GIS data if no inventory exists. The launcher checks
-Release health and prevents overlapping crawls. It creates a session once,
-saves its ID in `output/session.json`, then reuses it across requests, retries,
-and restarts. Requests are serial; the session stays open afterward. Missing
-saved sessions fail explicitly instead of silently replacing browser state.
+Keep REL running while the Action executes. Importing the JSON adds a reusable
+library definition; using it installs a separate session Action. Neither importing
+nor checking out this repository starts a research run. If **Import Action** is
+missing, update to a build supporting the Actions library and text transfers.
 
-Default limits are 50 verified home details and a 500-request safety limit,
-including address searches. Navigation allows 60 seconds. Transient browser
-failures wait five seconds and retry once before the next URL. The navigation
-timeout and retry delay can be set with `--navigation-timeout` and `--retry-delay`.
-Exhausted failures and access challenges stop the run. Out-of-area properties
-and mismatched addresses are recorded without stopping the crawl.
+## Optional Profile
 
-Run the script from any directory; paths resolve relative to the case study.
-Pass crawler options directly, without an `ARGS` variable. `./zillow/run.sh setup`
-installs dependencies without launching REL. `./zillow/run.sh --help` shows usage.
+The supplied `rel.action` version 1 configuration contains `configuration.setup`
+and deliberately omits the optional `configuration.profile`. No custom Profile,
+proxy subscription, or specific provider is required. A Profile can supply your
+preferred browser, network, and model settings when creating a new session.
 
-## Inventory
+To reuse a preferred Profile, edit the library Action's **Default Profile**.
+**Attached Profiles** adds the steps, disabled, to future sessions created from
+those Profiles; existing session actions retain their own steps and progress.
+Use **Export Action** to share the definition with its optional browser Profile
+configuration. Exports exclude credentials, browser data, local attachments, and
+run history; a referenced proxy alias must be configured on the receiving Mac.
+The earlier crawler used an Oxylabs ISP proxy, but this Action does not require it.
 
-```sh
-./zillow/run.sh inventory
-```
+## What each run does
 
-The importer queries the city's public ArcGIS parcel API directly. This is the
-primary official-data source; all Zillow navigation remains in REL. It requests
-only parcel/address/use fields and geometry, not owner names or mailing addresses.
-It snapshots object IDs first, downloads batches, and rejects truncation,
-duplicate IDs, or missing features before committing the import.
+The Action has three steps:
 
-The September 15, 2026 snapshot contains:
+1. Discover up to 20 distinct property links across at most two Santa Cruz
+   search-result pages, deduplicated by ZPID.
+2. Verify each detail page's identity and Santa Cruz, CA address, preserving
+   unit identifiers, and collect supported property facts with source links.
+3. Report prices labeled by home status, estimates, bedrooms, bathrooms, floor
+   and lot areas with units, observation times, skipped pages, and coverage.
 
-- 17,314 parcels flagged `SCCityLMT=Yes` by the city.
-- 14,748 parcels in the explicitly selected residential-use categories.
-- 14,747 distinct normalized residential address strings.
-- 14,730 addresses with a supported city-supplied Zillow lookup link.
-- 17 addresses needing link review; 839 city parcels lack an address, and 1,727
-  have other or unknown uses. Those parcel records are retained for review.
+Missing values remain unavailable. Conflicting bathroom counts retain their
+source labels. Login requirements, access challenges, and navigation failures
+are reported with any available partial results. No external messages are sent.
 
-This is a **parcel-address inventory, not a verified dwelling-unit inventory**.
-Apartment buildings, ADUs, and mobile-home parks can contain multiple homes at
-one address. Unit identifiers and number fractions are preserved when present.
-Refresh replaces the current parcel snapshot while preserving lookup outcomes;
-addresses no longer in the selected snapshot are excluded from the active count.
+This is a bounded sample of visible Zillow results. It does not establish city
+boundary membership, enumerate all dwellings, or promise complete coverage.
+These are agent instructions; site changes and model interpretation can affect
+results. Each run is a fresh observation and can include previously seen homes.
+Inspect the session chat and Action run history to assess the actual outcome;
+a completed run alone does not establish complete property coverage.
 
-[Official GIS layer](https://vwgisportal2.santacruzca.gov/arcgis/rest/services/search/MapServer/1)
+## Inventory crawler and existing data
 
-## Matching and coverage
+The [inventory crawler guide](CRAWLER.md) retains the separate Python workflow
+for official GIS address matching, persistent request queues, rendered captures,
+SQLite storage, retries, and data migration. Its code and saved output remain
+available. The native Action does not read or update that crawler's database or
+resume its queue. Python, Git, and crawler dependencies are only needed for that
+workflow.
 
-The named `zillow-inventory` Crawlee queue uses the official Zillow search link
-for each address. It does not continue the earlier search-pagination queue.
-When Zillow redirects to a home, its street address including unit must match the
-GIS address, and its city/state must be Santa Cruz, CA. A search result must have
-one exact address candidate before a detail lookup is queued. The detail record
-must match its final ZPID. Missing estimates remain NULL.
+## Artifact validation
 
-Statuses are `pending`, `resolving`, `matched`, `not_found`, `ambiguous`,
-`skipped`, `failed`, and `needs_review`. `not_found` means no exact candidate
-appeared in the captured response, not proof that Zillow has no such property.
-The final JSON reports these counts against the active official inventory.
-Municipal inclusion comes from the GIS city-limit flag; Zillow matching uses
-physical street/unit and city/state, not owner mailing fields. Geometry is
-retained for later spatial review, not currently used to validate Zillow points.
+[ACTION.json](ACTION.json) follows REL's `rel.action` version 1 text-transfer
+format with a version 1 setup, three prompts, no schedule, and no bundled Profile.
+The setup is manual and stops on errors. A live Zillow run is not part of this
+repository update; import and run it in your own REL session to verify access.
 
-Terminal requests remain handled in Crawlee. An ordinary restart resumes
-pending requests; it does not automatically retry terminal failures. To explicitly
-retry failed timeout, cancellation, or network-interruption lookups first:
+The private dashboard shows remaining Zillow addresses and tax parcels by the
+same geographic groups used for queue priority: Santa Cruz city limits, Live Oak
+area, Capitola, Soquel, then other postal areas. Santa Cruz uses the official
+city-limit flag. Live Oak is an explicit approximation: unincorporated ZIP 95062,
+not an exact community polygon. Capitola prefers official city limits with a
+postal-name fallback; other groupings use saved postal names. Multi-parcel Zillow
+addresses count once, in their earliest priority group. Only pending/in-progress
+work counts as remaining; terminal failures remain excluded. Counts refresh with
+the crawler status every 15 seconds. Tax estimates and Dougmar are prioritized
+within their geographic group, without overriding Santa Cruz city limits.
+Regenerate the private Zillow priority JSON using `prioritize_inventory.py` and
+the existing county inventory; both crawlers apply their order on startup without
+clearing queues or retrying handled resources.
 
-```sh
-./zillow/run.sh --retry-failed --max-addresses 10000 --max-pages 20000
-```
+### Terminal dashboard
 
-Recovery requests get stable keys tied to the recorded failure and a fresh bounded
-attempt budget. Repeating this option after interruption deduplicates the same
-recovery batch. Completed addresses, access challenges, missing sessions, and other
-nontransient failures are excluded. Current-run `run.errors` and statistics are
-separate from retained `error_history`. The stop message reports the actual URL
-and error; a navigation cancellation is not reported as an access block.
+Run `./monitor.sh --output /absolute/path/to/private/output` from this directory
+with Python 3 (no package installation). `PYTHON=/path/to/python3` selects an
+interpreter. The default output is `CRAWL_OUTPUT`, then this directory's `output`
+when it contains the database, then an existing
+`~/projects.next/rel-case-studies/zillow/output` installation.
 
-## Files and tests
+The dashboard independently shows Zillow and county-tax status, remaining work,
+saved pages, database error totals, failure streaks, and saved stop reasons. The
+live feed includes every newly saved URL and database error. Startup exceptions
+and ERROR/CRITICAL/FATAL lines from the crawler logs are shown too, marked
+`[log:filename]`; these diagnostics may also describe an error saved in SQLite.
+Historical log entries without timestamps display as `-- --:--:--`; new log
+errors use their observation time. ANSI escapes, control characters, and line
+breaks are removed so each event occupies one terminal line.
 
-- `output/inventory/addresses.csv`: active address roster with parcel IDs and reported unit counts.
-- `output/inventory/*.json`: complete selected-field GIS snapshots with geometry.
-- `output/zillow.sqlite3`: inventory parcels/addresses/runs, homes, observations,
-  captures, skipped URLs, and errors.
-- `output/crawlee`: persistent request queues.
-- `inventory.py`: official data import, normalization, and coverage summary.
-- `records.py`: Zillow extraction and storage.
-- `zillow.py`: lookup matching and RelCrawler handlers.
+Press `z` for Zillow or `t` for tax, then `y` to confirm a start/restart. Any
+other key cancels. A stopped crawler launches its saved command; an active one
+receives SIGINT and must exit and release its queue lock before a replacement
+starts. Zillow's child is interrupted first so its launcher keeps the lock until
+shutdown completes. The monitor stays responsive during the action, reports
+failures in its notice/feed, and never force-kills an unresponsive worker. If
+shutdown takes more than 45 seconds, no replacement is started; wait for the old
+worker to exit before trying again. Quit is deferred while a confirmed action
+finishes. Workers run independently of the monitor after startup.
 
-```sh
-cd zillow
-.venv/bin/python -m unittest -v
-```
+Controls preserve the configured profiles, sessions, queue paths, priorities,
+limits, captures, saved terminal failures, and persisted failure streaks. They
+refuse maintenance, saved safety/access stops, eleven consecutive failures,
+exhausted queues, conflicting locks, unrelated PIDs, and retry/rotation commands.
+These controls do not clear a safety stop; it must be resolved separately. Both
+the web dashboard and terminal controls share `dashboard-restart.lock` to avoid
+simultaneous starts. Run `--read-only` to disable interactive controls.
 
-See the [REL Crawlee guide](https://github.com/rel-me/rel-tools/blob/main/docs/CRAWLEE.md)
-for the supported browser integration. Local data is ignored by Git.
+Other keys: `q` quits, Space freezes/resumes the view, `1/2/3` filter all/Zillow/tax,
+`e/s/a` filter errors/saves/both, arrows and PageUp/PageDown scroll, End follows
+the live tail, and left/right reveal long lines. The display retains 5,000 events
+and initially reads the latest 60 records per table (`--history N` changes that).
+Polling defaults to every two seconds (`--interval 5` changes it). New records
+are drained in bounded batches without skipping IDs.
 
-## Data quality and migration
-
-`price` is Zillow's advertised price for the recorded `home_status`, which may
-be a sale, sold, rental, or off-market value. It is not necessarily an asking
-price. Zero or explicitly unknown prices are NULL. Original source values stay
-in `observations.facts_json`.
-
-`lot_area` must be read with `lot_area_units` (for example, Acres or Square Feet).
-`bathrooms` retains the structured property's count, including half baths.
-Observations and `latest_homes` also expose `rendered_bathrooms`,
-`bathrooms_source`, and `bathrooms_conflict`. A conflict of 1 means the rendered
-headline disagrees; NULL means comparison was unavailable. The original HTML
-and rendered text remain available for review.
-
-After an existing crawler stops, migrate saved data without starting a crawl:
-
-```sh
-./zillow/run.sh migrate
-```
-
-This command refuses to run while the crawler owns `output/run.lock`. It creates
-a complete SQLite backup alongside the database, backfills units and bathroom
-evidence from saved captures, renames `asking_price` to `price`, and normalizes
-unknown prices. Changes are transactional and rerunning is safe. `run.sh`
-also applies the migration under the same lock before starting its next crawl.
-A crawler already running keeps its loaded code until it exits. Its session,
-request queue, captures, and inventory outcomes are preserved by the migration.
+Use `./monitor.sh --plain` for complete, unwrapped event lines suitable for a pipe
+or `tee`. Use `./monitor.sh --once --history 10` for one status snapshot and recent
+events. Noninteractive output automatically selects plain mode. These modes have
+no controls. Missing/busy databases are reported and retried; the monitor never
+creates a database. Quitting does not stop either crawler. Output contains private
+crawl URLs and errors; keep terminal recordings and redirected logs private.
