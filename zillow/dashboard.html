@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Santa Cruz · Zillow crawl</title>
+  <style>
+    :root { color-scheme: light; --ink:#243329; --muted:#768078; --line:#e3e8e1; --green:#266b48; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:#f7f8f4; color:var(--ink); font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    main { max-width:1240px; margin:auto; padding:46px 32px; }
+    header { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:28px; }
+    .eyebrow { color:var(--green); font-size:11px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase; }
+    h1 { font-size:32px; font-weight:600; letter-spacing:-1px; margin:7px 0 4px; }
+    h2 { font-size:17px; margin:0; font-weight:600; }
+    p { margin:0; color:var(--muted); }
+    .right { display:flex; align-items:center; gap:12px; }
+    .pill { background:#e9eee8; padding:6px 11px; border-radius:20px; font-size:12px; white-space:nowrap; }
+    .pill.running { background:#e3f1e7; color:var(--green); }
+    .pill::before { content:""; display:inline-block; width:6px; height:6px; border-radius:50%; background:currentColor; margin-right:7px; vertical-align:middle; }
+    button,input,select { font:inherit; }
+    button { cursor:pointer; border:1px solid var(--line); background:white; color:var(--ink); border-radius:7px; padding:8px 13px; }
+    button:hover { background:#f1f5ef; }
+    button:disabled { opacity:.4; cursor:default; }
+    :focus-visible { outline:2px solid var(--green); outline-offset:3px; }
+    .cards { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+    .card { background:white; border:1px solid var(--line); border-radius:10px; padding:20px 22px; }
+    .card .label { font-size:12px; color:var(--muted); }
+    .number { font-size:30px; letter-spacing:-1px; font-weight:600; margin:6px 0 3px; font-variant-numeric:tabular-nums; }
+    .hint { font-size:11px; color:var(--muted); }
+    .progress { height:4px; border-radius:3px; background:#edf1eb; margin-top:12px; overflow:hidden; }
+    .progress span { height:100%; display:block; background:var(--green); width:0; transition:width .3s; }
+    .crawler-statuses { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:24px; }
+    .crawler-statuses .tax-meta { margin-top:0; }
+    @media(max-width:600px) { .crawler-statuses { grid-template-columns:1fr; } }
+    .tax-crawl { padding:22px; margin:0 0 24px; }
+    .tax-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:16px; }
+    .tax-heading p { margin-top:3px; font-size:12px; }
+    .tax-cards { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+    .tax-card { background:#fafbf8; border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+    .tax-card .number { font-size:24px; margin:3px 0 0; }
+    .tax-meta { display:grid; gap:5px; margin-top:14px; font-size:12px; }
+    .tax-meta strong { color:var(--ink); font-weight:600; }
+    .tax-error-list { border-top:1px solid var(--line); margin-top:13px; padding-top:10px; }
+    .tax-error-row { display:flex; justify-content:space-between; gap:15px; padding:5px 0; color:#83542f; font-size:12px; }
+    .tax-error-row time { color:var(--muted); white-space:nowrap; }
+    .panel { background:white; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+    .toolbar { padding:22px; display:flex; align-items:center; justify-content:space-between; gap:20px; border-bottom:1px solid var(--line); }
+    .filters { display:flex; align-items:center; gap:9px; }
+    input,select { padding:9px 11px; background:white; color:var(--ink); border:1px solid var(--line); border-radius:6px; }
+    input { width:235px; }
+    input::placeholder { color:#929b92; }
+    .table-scroll { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; text-align:left; white-space:nowrap; }
+    th { padding:11px 18px; font-size:10px; letter-spacing:.8px; text-transform:uppercase; background:#fafbf8; color:var(--muted); font-weight:600; }
+    td { padding:15px 18px; border-top:1px solid #edf0e9; font-size:13px; }
+    tbody tr:hover { background:#fafcf8; }
+    td.numeric,th.numeric { text-align:right; font-variant-numeric:tabular-nums; }
+    .address { display:block; font-size:13px; padding:0; border:0; border-radius:0; background:none; font-weight:600; text-align:left; }
+    .address:hover { color:var(--green); background:none; text-decoration:underline; }
+    .sub { display:block; font-size:11px; color:var(--muted); margin-top:2px; }
+    td.property { min-width:250px; }
+    .property-meta { display:flex; align-items:center; gap:8px; margin-top:6px; color:var(--muted); font-size:11px; }
+    .tag { font-size:10px; padding:4px 7px; border-radius:4px; background:#f0f3ec; color:#66705e; }
+    .tag.sale { background:#eaf2e8; color:#397043; }
+    .tag.rent { background:#edf0fa; color:#596488; }
+    .pager { display:flex; justify-content:space-between; align-items:center; padding:14px 22px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+    .pager button { padding:6px 12px; }
+    .empty { padding:50px; text-align:center; color:var(--muted); }
+    .activity { margin-top:24px; }
+    .activity-title { display:flex; justify-content:space-between; gap:15px; align-items:center; margin-bottom:12px; }
+    .errors { background:white; border:1px solid var(--line); border-radius:10px; padding:5px 20px; }
+    .error-row { display:flex; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); font-size:12px; }
+    .error-row:last-child { border:0; }
+    .error-row a { color:var(--ink); text-decoration:none; }
+    .error-row a:hover { text-decoration:underline; }
+    .error-row .sub { max-width:850px; white-space:normal; overflow-wrap:anywhere; }
+    .error-row time { color:var(--muted); white-space:nowrap; }
+    footer { display:flex; justify-content:space-between; gap:20px; color:var(--muted); font-size:11px; margin-top:20px; }
+    .alert { margin-bottom:18px; padding:12px 15px; color:#904a26; background:#fff1e5; border-radius:7px; }
+    .sr { position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    dialog { border:1px solid var(--line); border-radius:12px; padding:28px; width:min(900px,calc(100% - 32px)); max-height:90vh; overflow:auto; color:var(--ink); box-shadow:0 20px 80px #15201926; }
+    dialog::backdrop { background:#25392b40; }
+    .dialog-head { display:flex; align-items:start; justify-content:space-between; gap:15px; }
+    .dialog-head h2 { font-size:22px; }
+    .details { display:grid; grid-template-columns:1fr 1fr; gap:18px 24px; margin:24px 0; }
+    .details dt { color:var(--muted); font-size:11px; }
+    .details dd { margin:3px 0 0; font-size:15px; }
+    .source { color:var(--green); font-weight:600; }
+    .note { background:#f4f6f0; padding:12px; border-radius:6px; font-size:12px; margin-bottom:18px; }
+    .all-data { margin:24px 0 20px; border-top:1px solid var(--line); padding-top:18px; }
+    .all-data > summary,.capture > summary,.capture details > summary,.html-record > summary { cursor:pointer; font-weight:600; padding:9px 0; }
+    .all-data > summary { color:var(--green); font-size:15px; }
+    .capture { border:1px solid var(--line); border-radius:8px; padding:12px 16px; margin:14px 0; background:#fff; }
+    .capture-meta { display:grid; grid-template-columns:130px minmax(0,1fr); gap:7px 12px; font-size:12px; margin:10px 0 16px; }
+    .capture-meta dt { color:var(--muted); }
+    .capture-meta dd { margin:0; overflow-wrap:anywhere; }
+    .capture-meta a { color:var(--green); }
+    .capture details { border-top:1px solid #edf0e9; margin-top:9px; padding:4px 0; }
+    pre { margin:6px 0 12px; padding:13px; background:#f6f7f3; border-radius:6px; white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word; max-height:460px; overflow:auto; font:11px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .data-count { color:var(--muted); font-weight:400; font-size:12px; margin-left:8px; }
+    .loading-records { color:var(--muted); font-size:13px; padding:12px 0; }
+    .html-record { margin-top:10px; padding-top:5px; }
+    .html-record button { font-size:12px; }
+    @media(max-width:850px) { .toolbar { align-items:start; flex-direction:column; } .filters { flex-wrap:wrap; width:100%; } input { flex:1; min-width:200px; } }
+    @media(max-width:850px) { .tax-cards { grid-template-columns:repeat(2,1fr); } }
+    @media(max-width:600px) { main { padding:26px 16px; } h1 { font-size:27px; } header { align-items:start; } .right { flex-direction:column; align-items:end; gap:8px; } .cards { grid-template-columns:1fr 1fr; gap:9px; } .card { padding:16px; } .number { font-size:25px; } .toolbar { padding:17px; } footer { flex-direction:column; gap:5px; } .error-row { flex-direction:column; gap:4px; } .tax-crawl { padding:17px; } .tax-heading { align-items:flex-start; } .tax-cards { gap:8px; } .tax-card { padding:12px; } .tax-card .number { font-size:21px; } .tax-error-row { flex-direction:column; gap:1px; } }
+    .startup { margin-top:14px; padding-top:12px; border-top:1px solid var(--line,#e2e5df); font-size:13px; overflow-wrap:anywhere; }
+    .startup-title { font-weight:600; margin-bottom:5px; }
+    .startup-meta { color:var(--muted); font-size:12px; margin:7px 0; }
+    .startup-error { margin:10px 0; padding:10px; background:#fff2ef; border:1px solid #edc9c1; border-radius:6px; color:#8b3024; white-space:pre-wrap; }
+    .startup details { margin-top:10px; }
+    .startup pre { max-height:200px; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <div><div class="eyebrow">Zillow · Crawled data</div><h1>Santa Cruz homes</h1><p>A look at the properties collected so far.</p></div>
+    <div class="right"><button id="refresh" type="button">Refresh</button></div>
+  </header>
+  <div id="alert" class="alert" role="alert" hidden></div>
+  <section class="crawler-statuses" aria-label="Crawler status" aria-live="polite"><div class="card"><div class="tax-heading"><h2>Zillow crawl</h2><div class="right"><span id="zillow-state" class="pill">Checking</span><button id="zillow-restart" type="button" hidden>Restart Zillow crawl</button></div></div><div class="tax-meta"><div><strong>Profile:</strong> <span id="zillow-state-profile">—</span></div><div><strong>Last saved page:</strong> <span id="zillow-state-capture">—</span></div><div><strong>Consecutive failures:</strong> <span id="zillow-state-failures">—</span></div><div id="zillow-state-stop-row" hidden><strong>Stop reason:</strong> <span id="zillow-state-stop"></span></div></div><div id="zillow-startup" class="startup" hidden><div class="startup-title">Restart progress</div><div id="zillow-startup-message" role="status"></div><div id="zillow-startup-meta" class="startup-meta"></div><div id="zillow-startup-counts"></div><div id="zillow-startup-url" class="startup-meta"></div><div id="zillow-startup-error" class="startup-error" role="alert" hidden><span id="zillow-startup-error-text"></span> <button id="zillow-clear-error" type="button" aria-label="Clear Zillow error" title="Dismiss this message; saved logs and failure limits are unchanged">Clear</button></div><details id="zillow-startup-details"><summary>Recent startup log</summary><pre id="zillow-startup-log"></pre></details></div></div><div class="card"><div class="tax-heading"><h2>County tax crawl</h2><div class="right"><span id="county-state" class="pill">Checking</span><button id="county-restart" type="button" hidden>Restart tax crawl</button></div></div><div class="tax-meta"><div><strong>Profile:</strong> <span id="county-state-profile">—</span></div><div><strong>Last saved page:</strong> <span id="county-state-capture">—</span></div><div><strong>Consecutive failures:</strong> <span id="county-state-failures">—</span></div><div id="county-state-stop-row" hidden><strong>Stop reason:</strong> <span id="county-state-stop"></span></div></div><div id="county-startup" class="startup" hidden><div class="startup-title">Restart progress</div><div id="county-startup-message" role="status"></div><div id="county-startup-meta" class="startup-meta"></div><div id="county-startup-counts"></div><div id="county-startup-url" class="startup-meta"></div><div id="county-startup-error" class="startup-error" role="alert" hidden><span id="county-startup-error-text"></span> <button id="county-clear-error" type="button" aria-label="Clear tax error" title="Dismiss this message; saved logs and failure limits are unchanged">Clear</button></div><details id="county-startup-details"><summary>Recent startup log</summary><pre id="county-startup-log"></pre></details></div></div></section>
+  <section class="card" style="margin-bottom:24px" aria-labelledby="area-heading"><h2 id="area-heading">Remaining captures by area</h2><p class="muted">Priority runs from top to bottom. Within each area, tax parcels with saved estimates come first.</p><table><thead><tr><th>Area / priority</th><th>Zillow addresses left</th><th>Tax parcels left</th></tr></thead><tbody id="area-counts"></tbody></table><p id="area-note" class="muted"></p></section>
+
+  <section class="cards" aria-label="Crawl totals">
+    <div class="card"><div class="label">Properties</div><div class="number" id="home-count">—</div><div class="hint">Unique homes collected</div></div>
+    <div class="card"><div class="label">With estimate</div><div class="number" id="estimate-count">—</div><div class="hint" id="estimate-hint">Latest third-party estimate</div></div>
+    <div class="card"><div class="label">Page captures</div><div class="number" id="capture-count">—</div><div class="hint" id="capture-hint">Saved browser responses</div></div>
+    <div class="card"><div class="label">Inventory reviewed</div><div class="number" id="coverage-count">—</div><div class="hint" id="coverage-hint">Countywide residential addresses</div><div class="progress"><span id="coverage-bar"></span></div></div>
+  </section>
+  <section class="tax-crawl panel" aria-labelledby="tax-title" aria-live="polite">
+    <div class="tax-heading"><div><h2 id="tax-title">County tax crawl</h2><p>Official county tax bill collection status.</p></div></div>
+    <div id="tax-status-error" class="hint" hidden></div>
+    <div class="tax-cards">
+      <div class="tax-card"><div class="label">Parcels complete</div><div class="number" id="tax-parcels">—</div><div class="hint" id="tax-parcel-hint">—</div></div>
+      <div class="tax-card"><div class="label">Bill details saved</div><div class="number" id="tax-details">—</div><div class="hint" id="tax-detail-hint">—</div></div>
+      <div class="tax-card"><div class="label">Annual bills parsed</div><div class="number" id="tax-annual-bills">—</div><div class="hint">County annual bill records</div></div>
+      <div class="tax-card"><div class="label">Page captures</div><div class="number" id="tax-captures">—</div><div class="hint" id="tax-capture-hint">History and bill details</div></div>
+    </div>
+    <div class="progress"><span id="tax-progress-bar"></span></div>
+    <div class="tax-meta">
+      <div><strong>Profile:</strong> <span id="tax-profile">—</span></div>
+      <div><strong>Last saved page:</strong> <span id="tax-last-capture">—</span></div>
+      <div id="tax-stop-row" hidden><strong>Stop reason:</strong> <span id="tax-stop-reason"></span></div>
+    </div>
+    <div id="tax-errors" class="tax-error-list" hidden></div>
+  </section>
+  <section class="panel" aria-labelledby="properties-title">
+    <div class="toolbar"><h2 id="properties-title">Properties</h2><div class="filters">
+      <label class="sr" for="search">Search address, ZIP or property ID</label><input id="search" type="search" placeholder="Search address, ZIP or ZPID…">
+      <label class="sr" for="status">Property status</label><select id="status"><option value="">All statuses</option></select>
+      <label class="sr" for="sort">Sort properties</label><select id="sort"><option value="recent">Recently captured</option><option value="address">Address A–Z</option><option value="value">Highest estimate</option><option value="percentage-difference">Largest percentage difference</option><option value="percentage-difference-asc">Smallest percentage difference</option><option value="value-difference">Largest value difference</option><option value="value-difference-asc">Smallest value difference</option></select>
+    </div></div>
+    <div class="table-scroll"><table><thead><tr><th>Property</th><th class="numeric">Estimated value</th><th class="numeric">Assessed value</th><th class="numeric"><button class="sort-heading" data-sort="percentage-difference" aria-label="Sort by percentage difference">Percentage difference ↕</button></th><th class="numeric"><button class="sort-heading" data-sort="value-difference" aria-label="Sort by value difference">Value difference ↕</button></th></tr></thead><tbody id="homes"><tr><td colspan="5" class="empty">Loading properties…</td></tr></tbody></table></div>
+    <div class="pager"><span id="results">—</span><div class="right"><button id="previous" disabled>Previous</button><span id="page">—</span><button id="next" disabled>Next</button></div></div>
+  </section>
+  <section class="activity" aria-labelledby="errors-title"><div class="activity-title"><h2 id="errors-title">Recent crawl errors</h2><span class="hint">Historical · may have recovered</span></div><div id="errors" class="errors"><p class="empty">Loading…</p></div></section>
+  <footer><span>Recorded Zillow values, not live listings. “—” means unavailable.</span><span id="updated">Refreshes every 15 seconds.</span></footer>
+</main>
+<dialog id="detail" aria-labelledby="detail-title"><div class="dialog-head"><div><h2 id="detail-title"></h2><p id="detail-city"></p></div><button id="close-detail" aria-label="Close property details">✕</button></div><dl id="detail-fields" class="details"></dl><p id="bath-note" class="note" hidden></p><a id="source" class="source" target="_blank" rel="noopener noreferrer">View on Zillow ↗</a><details id="all-data" class="all-data"><summary>All collected data <span id="data-count" class="data-count"></span></summary><p id="records-loading" class="loading-records">Loading all observations and page captures…</p><div id="records"></div></details></dialog>
+<script>
+  const $ = id => document.getElementById(id);
+  const num = value => value == null ? '—' : Number(value).toLocaleString();
+  const money = value => value == null ? '—' : new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(value);
+  const moneyDelta = value => value == null ? '—' : (value>0?'+':'')+money(value);
+  const formatPercent = value => value == null ? '—' : (value>0?'+':'')+Number(value).toFixed(1)+'%';
+  const label = value => value ? value.toLowerCase().replaceAll('_',' ').replace(/\b\w/g,c=>c.toUpperCase()) : 'Unknown';
+  const date = value => value ? new Date(value).toLocaleDateString(undefined,{month:'short',day:'numeric'}) : '—';
+  const stamp = value => value ? new Date(value).toLocaleString() : '—';
+  function node(tag,text,className) { const el=document.createElement(tag); if(text!=null) el.textContent=text; if(className) el.className=className; return el; }
+  function safeURL(value) { try { const url=new URL(value); return url.protocol==='https:' && url.hostname==='www.zillow.com' ? url.href : null; } catch { return null; } }
+  let page=1, pages=1, debounce, controller;
+  let detailRequest=0;
+  async function detail(home) {
+    const request=++detailRequest;
+    $('detail-title').textContent=home.address || 'Property '+home.zpid;
+    $('detail-city').textContent=[home.city,home.state,home.postal_code].filter(Boolean).join(', ');
+    $('detail-fields').replaceChildren(); $('records').replaceChildren(); $('data-count').textContent=''; $('records-loading').hidden=false;
+    $('records-loading').textContent='Loading all observations and page captures…'; $('bath-note').hidden=true;
+    const url=safeURL(home.url); $('source').hidden=!url; if(url) $('source').href=url;
+    $('detail').showModal();
+    try {
+      const response=await fetch('/api/property/'+encodeURIComponent(home.zpid));
+      const data=await response.json(); if(!response.ok) throw new Error(data.error||'Could not load property records.');
+      if(request!==detailRequest) return;
+      $('records-loading').hidden=true;
+      const record=data.property, baths=record.rendered_bathrooms ?? record.bathrooms;
+      const fields=[['Estimated value',money(record.zestimate)],['Assessed value',money(record.assessed_value)],
+        ['Assessment year',record.assessment_year==null?'—':'FY '+record.assessment_year+'–'+(record.assessment_year+1)],
+        ['Recorded price',money(record.price)+(record.home_status==='FOR_RENT'&&record.price!=null?'/mo':'')],
+        ['Rent estimate',record.rent_zestimate==null?'—':money(record.rent_zestimate)+'/mo'],['Status',label(record.home_status)],
+        ['Bedrooms / bathrooms',num(record.bedrooms)+' / '+num(baths)],['Living area',record.living_area==null?'—':num(record.living_area)+' sq ft'],
+        ['Lot area',record.lot_area==null?'—':num(record.lot_area)+' '+(record.lot_area_units||'')],['Year built',record.year_built ?? '—'],
+        ['Home type',label(record.home_type)],['Property ID',record.zpid],['Coordinates',record.latitude!=null&&record.longitude!=null?record.latitude+', '+record.longitude:'—'],['Captured',stamp(record.captured_at)]];
+      for(const [title,value] of fields) { const group=node('div'); group.append(node('dt',title),node('dd',value)); $('detail-fields').append(group); }
+      $('bath-note').hidden=!record.bathrooms_conflict;
+      $('bath-note').textContent='The page displayed '+num(record.rendered_bathrooms)+' bathrooms; its structured record reported '+num(record.bathrooms)+'. The displayed value is shown here.';
+      $('data-count').textContent=data.observations.length+' observations · '+data.captures.length+' captures';
+      renderAllData(data);
+    } catch(error) { if(request===detailRequest) $('records-loading').textContent=error.message; }
+  }
+  function jsonBlock(title,value) {
+    const disclosure=node('details'), summary=node('summary',title), pre=node('pre',JSON.stringify(value,null,2));
+    disclosure.append(summary,pre); return disclosure;
+  }
+  function safeCapturedLink(title,value) {
+    const url=safeURL(value); if(!url) return node('span',value||'—');
+    const link=node('a',title||url); link.href=url; link.target='_blank'; link.rel='noopener noreferrer'; return link;
+  }
+  function renderAllData(data) {
+    $('records').append(jsonBlock('Complete saved property fields',data.property));
+    for(const observation of data.observations) {
+      const article=node('article',null,'capture'), capture=data.captures.find(item=>item.id===observation.capture_id);
+      const facts=node('details',null,'capture'); facts.append(node('summary','Observation · '+(capture?stamp(capture.captured_at):'Capture '+observation.capture_id)));
+      const values={}; for(const [key,value] of Object.entries(observation)) if(key!=='facts') values[key]=value;
+      facts.append(jsonBlock('Observation fields',values),jsonBlock('Complete property facts',observation.facts)); article.append(facts);
+      if(capture) article.append(renderCapture(capture)); $('records').append(article);
+    }
+  }
+  function renderCapture(capture) {
+    const section=node('details',null,'capture');
+    section.append(node('summary','Page capture · '+stamp(capture.captured_at)+' · HTTP '+(capture.http_status??'—')));
+    const metadata=node('dl',null,'capture-meta');
+    const values=[['Capture ID',capture.id],['Title',capture.title||'—'],['Requested URL',safeCapturedLink('',capture.requested_url)],
+      ['Final URL',safeCapturedLink('',capture.final_url)],['Canonical URL',safeCapturedLink('',capture.canonical_url)],
+      ['SHA-256',capture.sha256],['Captured HTML',num(capture.html_bytes)+' characters']];
+    for(const [title,value] of values) { metadata.append(node('dt',title)); const dd=node('dd'); dd.append(value instanceof Node?value:node('span',value)); metadata.append(dd); }
+    section.append(metadata,jsonBlock('Rendered page text',capture.text),jsonBlock('Page metadata',capture.metadata),jsonBlock('Structured page data',capture.structured_data));
+    const raw=node('details',null,'html-record'); raw.append(node('summary','Original captured HTML · '+(capture.html_bytes/1024/1024).toFixed(1)+' MB'));
+    const button=node('button','Load captured HTML'); button.type='button'; const pre=node('pre'); pre.hidden=true;
+    button.onclick=async()=>{ button.disabled=true; button.textContent='Loading…'; try { const response=await fetch('/api/capture/'+capture.id+'/html'); if(!response.ok) throw new Error('Capture unavailable.'); pre.textContent=await response.text(); pre.hidden=false; button.textContent='HTML loaded'; } catch(error) { button.textContent=error.message; } };
+    raw.append(button,pre); section.append(raw); return section;
+  }
+  function render(data) {
+    page=data.page; pages=data.pages;
+    const s=data.summary;
+    $('home-count').textContent=num(s.homes); $('estimate-count').textContent=num(s.with_zestimate); $('capture-count').textContent=num(s.captures);
+    $('estimate-hint').textContent=s.homes?Math.round(s.with_zestimate/s.homes*100)+'% of collected homes':'No homes collected yet';
+    $('capture-hint').textContent='Last capture '+stamp(s.last_capture);
+    const coveragePercent=s.inventory_total?s.reviewed/s.inventory_total*100:0;
+    $('coverage-count').textContent=coveragePercent.toFixed(1)+'%'; $('coverage-hint').textContent=num(s.reviewed)+' of '+num(s.inventory_total)+' addresses'; $('coverage-bar').style.width=coveragePercent+'%';
+
+    const selected=$('status').value;
+    $('status').replaceChildren(new Option('All statuses',''),...data.statuses.map(s=>new Option(label(s),s))); $('status').value=selected;
+    $('homes').replaceChildren();
+    for(const home of data.homes) {
+      const tr=node('tr'), address=node('td',null,'property'), button=node('button',home.address||'Property '+home.zpid,'address');
+      button.onclick=()=>detail(home); address.append(button,node('span',[home.city,home.state,home.postal_code].filter(Boolean).join(', '),'sub'));
+      const baths=home.rendered_bathrooms ?? home.bathrooms;
+      const metadata=node('div',null,'property-meta');
+      metadata.append(node('span',label(home.home_status),'tag'+(home.home_status==='FOR_SALE'?' sale':home.home_status==='FOR_RENT'?' rent':'')));
+      const bed=node('span',num(home.bedrooms)+' bd · '+num(baths)+' ba'+(home.bathrooms_conflict?'*':''));
+      if(home.bathrooms_conflict) bed.title='Displayed and structured bathroom counts differ. Open details to compare.';
+      metadata.append(bed); address.append(metadata);
+      const assessment=node('td',null,'numeric');
+      assessment.append(node('div',money(home.assessed_value)));
+      if(home.assessment_year!=null) assessment.append(node('div','FY '+home.assessment_year+'–'+(home.assessment_year+1),'sub'));
+      tr.append(address,node('td',money(home.zestimate),'numeric'),assessment,
+        node('td',formatPercent(home.percentage_difference),'numeric'),node('td',moneyDelta(home.value_difference),'numeric')); $('homes').append(tr);
+    }
+    if(!data.homes.length) { const td=node('td','No properties match your search.','empty'); td.colSpan=5; const tr=node('tr'); tr.append(td); $('homes').append(tr); }
+    $('results').textContent=data.total?num((page-1)*data.page_size+1)+'–'+num(Math.min(page*data.page_size,data.total))+' of '+num(data.total)+' properties':'0 properties';
+    $('page').textContent=page+' / '+pages; $('previous').disabled=page<=1; $('next').disabled=page>=pages;
+    $('errors').replaceChildren();
+    for(const error of data.errors) {
+      const row=node('div',null,'error-row'), text=node('div'), url=safeURL(error.url);
+      const title=node(url?'a':'span',(error.terminal?'Failed':'Retried')+' · '+(error.url.split('/').filter(Boolean).at(-1)||error.url));
+      if(url) { title.href=url; title.target='_blank'; title.rel='noopener noreferrer'; }
+      text.append(title,node('span',error.error,'sub')); const time=node('time',stamp(error.occurred_at)); time.dateTime=error.occurred_at; row.append(text,time); $('errors').append(row);
+    }
+    if(!data.errors.length) $('errors').append(node('p','No crawl errors recorded.','empty'));
+    $('updated').textContent='Updated '+new Date().toLocaleTimeString()+' · Auto-refresh 15s';
+  }
+  function renderTaxStatus(data) {
+    if(!data.available) { $('tax-status-error').textContent='County tax database is not connected.'; $('tax-status-error').hidden=false; return; }
+    $('tax-status-error').hidden=true;
+    const targets=data.targets||{}, details=data.details||{}, captures=data.captures||{};
+    const completed=Number(targets.complete||0), targetTotal=Number(data.target_total||0), failed=Number(targets.failed||0);
+    const detailsComplete=Number(details.complete||0), detailsTotal=Number(data.detail_total||0);
+    const history=Number(captures.history?.count||0), billDetails=Number(captures.bill_detail?.count||0);
+    $('tax-parcels').textContent=num(completed); $('tax-parcel-hint').textContent=num(targetTotal)+' targets · '+num(failed)+' failed';
+    $('tax-details').textContent=num(detailsComplete); $('tax-detail-hint').textContent=num(detailsTotal)+' listed bills · '+num(details.pending||0)+' selected pending · '+num(details.not_selected||0)+' older/other skipped';
+    $('tax-annual-bills').textContent=num(data.annual_bills||0);
+    $('tax-captures').textContent=num(history+billDetails); $('tax-capture-hint').textContent=num(history)+' history · '+num(billDetails)+' details';
+    $('tax-progress-bar').style.width=(targetTotal?Math.min(100,completed/targetTotal*100):0)+'%';
+    $('tax-profile').textContent=data.profile||'—'; $('tax-last-capture').textContent=stamp(data.last_capture);
+    $('tax-stop-row').hidden=!data.stop_reason; $('tax-stop-reason').textContent=data.stop_reason||'';
+    const errors=$('tax-errors'); errors.replaceChildren();
+    for(const error of (data.recent_errors||[])) {
+      const row=node('div',null,'tax-error-row'), time=node('time',stamp(error.occurred_at));
+      time.dateTime=error.occurred_at; row.append(node('span',error.category),time); errors.append(row);
+    }
+    errors.hidden=!data.recent_errors?.length;
+  }
+  const restartSnapshots={}, restartRequestErrors={}, restartPosting=new Set(), openedFailure={};
+  const dismissedErrors={};
+  for(const key of ['zillow','county']) {
+    try { dismissedErrors[key]=localStorage.getItem('crawl-dismissed-error-'+key); } catch {}
+  }
+  function errorToken(key,item) {
+    return JSON.stringify([item.attempt_id||item.started_at,item.pid,item.error_id,
+      restartRequestErrors[key]||item.error]);
+  }
+  function renderRestart(key,item) {
+    if(restartPosting.has(key)) return;
+    item=item||{};
+    const panel=$(key+'-startup'); panel.hidden=!item?.available&&!restartRequestErrors[key];
+    if(panel.hidden) return;
+    const failed=item.phase==='failed';
+    if(item.available) {
+      $(key+'-startup-message').textContent=item.message;
+      const elapsed=item.elapsed_seconds||0;
+      $(key+'-startup-meta').textContent=`Started ${stamp(item.started_at)} · Elapsed ${Math.floor(elapsed/60)}m ${elapsed%60}s · PID ${item.pid||'—'} · Exit ${item.exit_code??'—'}`;
+      $(key+'-startup-counts').textContent=`${num(item.saved_pages||0)} pages saved since this start`+(item.queue_total!=null?` · ${num(item.queue_total)} requests prioritized`:'');
+      $(key+'-startup-url').textContent=item.latest_url?'Latest saved URL: '+item.latest_url:'';
+      $(key+'-startup-log').textContent=(item.log_lines||[]).join('\n')||'Waiting for startup log output…';
+      $(key+'-state').textContent=failed?'Failed':item.active?(item.phase==='running'?'Running':'Starting'):'Stopped';
+      $(key+'-state').className='pill'+(item.phase==='running'?' running':'');
+      $(key+'-restart').hidden=!item.can_restart;
+    }
+    const error=restartRequestErrors[key]||item.error;
+    $(key+'-startup-error').hidden=!error||dismissedErrors[key]===errorToken(key,item);
+    $(key+'-startup-error-text').textContent=error?((failed||restartRequestErrors[key]?'Final error: ':'Most recent error: ')+error):'';
+    const token=item.attempt_id||item.started_at;
+    if(failed&&token&&openedFailure[key]!==token) { $(key+'-startup-details').open=true; openedFailure[key]=token; }
+  }
+  let restartPollActive=false;
+  async function loadRestartStatus() {
+    if(restartPollActive) return; restartPollActive=true;
+    try {
+      const response=await fetch('/api/restart-status');const data=await response.json();
+      if(!response.ok) throw new Error(data.error||'Restart status unavailable.');
+      for(const [key,worker] of [['zillow','zillow'],['county','tax']]) {
+        restartSnapshots[key]=data[worker];renderRestart(key,data[worker]);
+      }
+    } catch(error) {
+      for(const key of ['zillow','county']) if(!$(key+'-startup').hidden) $(key+'-startup-message').textContent='Status update failed: '+error.message+' Retrying…';
+    } finally { restartPollActive=false; }
+  }
+  async function loadTaxStatus() {
+    try { const response=await fetch('/api/crawl-status'); const data=await response.json(); if(!response.ok) throw new Error(data.error||'Could not load crawler status.');
+      for(const [key,crawl] of [['zillow',data.zillow],['county',data.tax]]) {
+        $(key+'-state').textContent=crawl.starting?'Starting':crawl.available?crawl.status:'Unavailable';
+        $(key+'-restart').hidden=!crawl.can_restart;
+        $(key+'-state').className='pill'+(crawl.running?' running':'');
+        $(key+'-state-profile').textContent=crawl.profile||'—';
+        $(key+'-state-capture').textContent=stamp(crawl.last_capture);
+        $(key+'-state-failures').textContent=num(crawl.consecutive_failures||0);
+        $(key+'-state-stop-row').hidden=!crawl.stop_reason; $(key+'-state-stop').textContent=crawl.stop_reason||'';
+        if(restartSnapshots[key]) renderRestart(key,restartSnapshots[key]);
+      }
+      const areas=$('area-counts'); areas.replaceChildren();
+      if(data.areas?.available) {
+        for(const area of data.areas.rows) {
+          const row=node('tr'); row.append(node('td',area.area),node('td',num(area.zillow_remaining)),node('td',num(area.tax_remaining))); areas.append(row);
+        }
+        $('area-note').textContent=data.areas.note;
+      } else { $('area-note').textContent='Area counts unavailable.'; }
+      renderTaxStatus(data.tax); }
+    catch(error) { for(const key of ['zillow','county']) { $(key+'-restart').hidden=true; $(key+'-state').textContent='Status unavailable'; $(key+'-state').className='pill'; } $('tax-status-error').textContent=error.message; $('tax-status-error').hidden=false; }
+  }
+  async function load() {
+    controller?.abort(); const current=new AbortController(); controller=current;
+    const query=new URLSearchParams({q:$('search').value,status:$('status').value,sort:$('sort').value,page});
+    try { const response=await fetch('/api/data?'+query,{signal:current.signal}); const data=await response.json(); if(!response.ok) throw new Error(data.error||'Could not load data.'); if(current!==controller) return; render(data); $('alert').hidden=true; }
+    catch(error) { if(error.name==='AbortError') return; $('alert').textContent=error.message+' Use Refresh to try again.'; $('alert').hidden=false; }
+  }
+  for(const [key,worker] of [['zillow','zillow'],['county','tax']]) {
+    $(key+'-clear-error').onclick=()=>{
+      dismissedErrors[key]=errorToken(key,restartSnapshots[key]||{});
+      try { localStorage.setItem('crawl-dismissed-error-'+key,dismissedErrors[key]); } catch {}
+      renderRestart(key,restartSnapshots[key]);
+    };
+    $(key+'-restart').onclick=async()=>{
+      const button=$(key+'-restart'); button.disabled=true; button.textContent='Restarting…';
+      restartPosting.add(key);delete restartRequestErrors[key];
+      $(key+'-startup').hidden=false;$(key+'-startup-message').textContent='Restart requested. Checking saved command and queue…';
+      $(key+'-startup-error').hidden=true;
+      try {
+        const response=await fetch('/api/restart/'+worker,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+        const data=await response.json(); if(!response.ok) throw new Error(data.error||'Restart failed.');
+        $('alert').hidden=true; loadTaxStatus();
+      } catch(error) { restartRequestErrors[key]=error.message;$(key+'-startup-error').hidden=false;$(key+'-startup-error-text').textContent='Restart request failed: '+error.message; }
+      finally { restartPosting.delete(key);button.disabled=false; button.textContent=worker==='zillow'?'Restart Zillow crawl':'Restart tax crawl';await loadRestartStatus(); }
+    };
+  }
+  $('refresh').onclick=()=>{ load(); loadTaxStatus(); loadRestartStatus(); };
+  $('search').oninput=()=>{ clearTimeout(debounce); debounce=setTimeout(()=>{ page=1; load(); },250); };
+  for(const id of ['status','sort']) $(id).onchange=()=>{ page=1; load(); };
+  document.querySelectorAll('.sort-heading').forEach(button=>button.onclick=()=>{
+    const base=button.dataset.sort, current=$('sort').value;
+    $('sort').value=current===base?base+'-asc':base; page=1; load();
+  });
+  $('previous').onclick=()=>{ if(page>1) { page--; load(); } }; $('next').onclick=()=>{ if(page<pages) { page++; load(); } };
+  $('close-detail').onclick=()=>$('detail').close();
+  $('detail').onclick=event=>{ if(event.target===$('detail')) { const r=$('detail').getBoundingClientRect(); if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom) $('detail').close(); } };
+  setInterval(()=>{ if(!document.hidden) { load(); loadTaxStatus(); } },15000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) { load(); loadTaxStatus(); } });
+  setInterval(loadRestartStatus,2000);
+  load(); loadTaxStatus(); loadRestartStatus();
+</script>
+</body>
+</html>

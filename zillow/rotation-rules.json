@@ -1,0 +1,10 @@
+{
+  "http_statuses": [502, 503, 504],
+  "skip_http_statuses": [404],
+  "rotate_after_consecutive_skips": 3,
+  "cooldown_seconds": 30,
+  "max_rotations_per_run": 10,
+  "max_consecutive_failures": 3,
+  "retries_per_url": 1,
+  "rotate_supported_proxy": false
+}

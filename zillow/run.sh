@@ -6,17 +6,19 @@ cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 case "${1:-}" in
   -h|--help)
     cat <<'HELP'
-Usage: ./run.sh [crawler options]
+Usage: ./run.sh --profile PROFILE [crawler options]
        ./run.sh setup
        ./run.sh inventory [options]
        ./run.sh migrate [options]
+       ./run.sh dashboard [--port 8787]
 
 With no subcommand, run or resume the saved crawl through Release REL.app.
-Example: ./run.sh --max-addresses 10000 --max-pages 20000
+Example: ./run.sh --profile YourProfile --max-addresses 10000 --max-pages 20000
 Use PYTHON=/path/to/python3.11 (or newer) to select the bootstrap interpreter.
 HELP
     exit 0
     ;;
+  dashboard) shift; exec "${PYTHON:-python3}" dashboard.py "$@" ;;
   setup|inventory|migrate) action="$1"; shift ;;
   *) action=run ;;
 esac
