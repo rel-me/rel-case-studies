@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import sqlite3
 import uuid
+from crawl_controls import USER_STOP
 
 ANSI=re.compile(r'\x1b\[[0-?]*[ -/]*[@-~]')
 LOGS={'zillow':('zillow-runner.log','zillow-crawl.log'),'tax':('county-tax.log',)}
@@ -109,8 +110,10 @@ def describe(output,worker,database,run,progress,alive,queue_locked):
     # Recoverable resource errors remain useful diagnostics after a clean exit,
     # but are not the final reason that a completed/interrupted worker stopped.
     explicit_failure=attempt.get('error') or progress.get('stop_reason')
-    failed=not active and bool(explicit_failure or code not in (None,0,130)
-                              or (code is None and (error or not captures['saved'])))
+    manual_stop=run.get('maintenance')==USER_STOP
+    expected_codes=(None,0,130,-2) if manual_stop else (None,0,130)
+    failed=not active and bool(explicit_failure or code not in expected_codes
+                              or (code is None and not manual_stop and (error or not captures['saved'])))
     stage='launching';message='Starting saved launcher and waiting for REL readiness.'
     queue_total=None
     if any('Running Zillow crawl through' in line for line in lines):

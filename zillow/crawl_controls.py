@@ -81,19 +81,38 @@ def owns_process(command,script,output):
 
 
 def interrupt_worker(pid,script,output):
-    """Interrupt only the verified worker. Zillow's launcher must outlive its child."""
+    """Interrupt verified crawler leaves; leave launchers/wrappers waiting."""
     actual=process_info(pid)
     if not owns_process(actual,script,output): raise ControlError('Worker identity changed; refusing to signal this PID')
     targets=[int(pid)]
-    if script=='run.py':
-        reply=subprocess.run(['ps','-axo','pid=,ppid=,command='],capture_output=True,text=True,timeout=2)
-        children=[]
-        for line in reply.stdout.splitlines():
-            parts=line.strip().split(None,2)
-            if len(parts)==3 and parts[1]==str(pid) and owns_process(parts[2],'zillow.py',output): children.append(int(parts[0]))
-        if children: targets=children
+    child_script='zillow.py' if script=='run.py' else script
+    reply=subprocess.run(['ps','-axo','pid=,ppid=,command='],capture_output=True,text=True,timeout=2)
+    if reply.returncode != 0:
+        raise ControlError('Cannot inspect crawler children; refusing to interrupt a wrapper')
+    processes={}
+    for line in reply.stdout.splitlines():
+        parts=line.strip().split(None,2)
+        if len(parts)==3 and parts[0].isdigit() and parts[1].isdigit():
+            processes[int(parts[0])]=(int(parts[1]),parts[2])
+    descendants=set()
+    frontier={int(pid)}
+    while frontier:
+        frontier={child for child,(parent,_) in processes.items()
+                  if parent in frontier and child not in descendants and child!=int(pid)}
+        descendants.update(frontier)
+    owned={child for child in descendants if owns_process(processes[child][1],child_script,output)}
+    if owned:
+        # A caffeinate or nested wrapper command also contains the script path.
+        # Signal only its deepest verified crawler descendants so the wrappers
+        # continue waiting instead of abandoning still-running children.
+        ancestors=set()
+        for child in owned:
+            parent=processes[child][0]
+            while parent in descendants and parent not in ancestors:
+                ancestors.add(parent);parent=processes[parent][0]
+        targets=sorted(owned-ancestors)
     for target in targets:
-        expected='zillow.py' if target!=int(pid) else script
+        expected=child_script if target!=int(pid) else script
         if not owns_process(process_info(target),expected,output): raise ControlError('Worker identity changed before interrupt')
         try: os.kill(target,signal.SIGINT)
         except ProcessLookupError: pass

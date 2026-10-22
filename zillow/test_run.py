@@ -1,14 +1,46 @@
 import io
 import json
+import signal
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 import run as launcher
 
 
 class LauncherTests(unittest.TestCase):
+    def test_interrupt_during_spawn_is_forwarded_after_child_assignment(self):
+        child=Mock();child.poll.return_value=None;child.wait.return_value=130
+        previous=signal.getsignal(signal.SIGINT)
+        def spawn(*args,**kwargs):
+            signal.getsignal(signal.SIGINT)(signal.SIGINT,None)
+            return child
+        with patch.object(launcher.subprocess,'Popen',side_effect=spawn):
+            self.assertEqual(launcher.wait_for_child(['python','zillow.py']),130)
+        child.send_signal.assert_called_once_with(signal.SIGINT)
+        child.wait.assert_called_once_with()
+        self.assertIs(signal.getsignal(signal.SIGINT),previous)
+
+    def test_interrupt_while_waiting_does_not_abandon_child(self):
+        child=Mock();child.poll.return_value=None
+        previous=signal.getsignal(signal.SIGINT)
+        def wait():
+            signal.getsignal(signal.SIGINT)(signal.SIGINT,None)
+            return 130
+        child.wait.side_effect=wait
+        with patch.object(launcher.subprocess,'Popen',return_value=child):
+            self.assertEqual(launcher.wait_for_child(['python','zillow.py']),130)
+        child.send_signal.assert_called_once_with(signal.SIGINT)
+        self.assertIs(signal.getsignal(signal.SIGINT),previous)
+
+    def test_failed_spawn_restores_original_signal_handler(self):
+        previous=signal.getsignal(signal.SIGINT)
+        with patch.object(launcher.subprocess,'Popen',side_effect=OSError('spawn failed')):
+            with self.assertRaisesRegex(OSError,'spawn failed'):
+                launcher.wait_for_child(['python','zillow.py'])
+        self.assertIs(signal.getsignal(signal.SIGINT),previous)
+
     def test_release_health(self):
         health = {'status': 'ok', 'data': {'build': {'configuration': 'Release'}}}
         with patch.object(launcher, 'urlopen', return_value=io.BytesIO(json.dumps(health).encode())) as request:
@@ -36,7 +68,7 @@ class LauncherTests(unittest.TestCase):
             with patch.object(launcher, 'ROOT', root), patch.object(launcher, 'APP', app), \
                  patch.object(launcher, 'wait_for_release') as ready, \
                  patch.object(launcher.subprocess, 'run') as open_app, \
-                 patch.object(launcher.subprocess, 'call', return_value=2) as crawl:
+                 patch.object(launcher, 'wait_for_child', return_value=2) as crawl:
                 self.assertEqual(launcher.run(['--max-pages', '3']), 2)
                 open_app.assert_called_once_with(['open', str(app)], check=True)
                 ready.assert_called_once_with()
@@ -57,7 +89,7 @@ class LauncherTests(unittest.TestCase):
             fcntl.flock(county_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             with patch.object(launcher, 'ROOT', root), patch.object(launcher, 'APP', app), \
                  patch.object(launcher, 'wait_for_release'), patch.object(launcher.subprocess, 'run'), \
-                 patch.object(launcher.subprocess, 'call', return_value=0):
+                 patch.object(launcher, 'wait_for_child', return_value=0):
                 self.assertEqual(launcher.run(['--output', str(output), '--profile', 'Zillow']), 0)
             self.assertTrue((output / 'zillow-run.lock').exists())
             county_lock.close()
@@ -73,7 +105,7 @@ class LauncherTests(unittest.TestCase):
                 return 130
             with patch.object(launcher,'ROOT',root),patch.object(launcher,'APP',app), \
                  patch.object(launcher,'wait_for_release'),patch.object(launcher.subprocess,'run'), \
-                 patch.object(launcher.subprocess,'call',side_effect=child):
+                 patch.object(launcher,'wait_for_child',side_effect=child):
                 self.assertEqual(launcher.run([]),130)
             state=json.loads((root/'output/active-run.json').read_text())
             self.assertEqual(state['maintenance'],'Stopped by user from dashboard')
@@ -82,7 +114,7 @@ class LauncherTests(unittest.TestCase):
     def test_missing_app_does_not_start_crawler(self):
         with tempfile.TemporaryDirectory() as temp, \
              patch.object(launcher, 'APP', Path(temp) / 'missing.app'), \
-             patch.object(launcher.subprocess, 'call') as crawl:
+             patch.object(launcher, 'wait_for_child') as crawl:
             with self.assertRaisesRegex(RuntimeError, 'Install REL'):
                 launcher.run([])
             crawl.assert_not_called()

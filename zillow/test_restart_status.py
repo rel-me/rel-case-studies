@@ -126,6 +126,23 @@ class StartupTests(unittest.TestCase):
         state=startup.read(startup.attempt_path(self.output,'zillow'))
         self.assertEqual(state['id'],new);self.assertNotIn('error',state)
 
+    def test_intentional_interrupt_does_not_invent_error_but_keeps_real_stops(self):
+        from crawl_controls import USER_STOP
+        for code in (-2,None,130):
+            with self.subTest(exit_code=code):
+                run=dict(self.run,exit_code=code,maintenance=USER_STOP)
+                status=self.describe(run=run)
+                self.assertEqual(status['phase'],'stopped')
+                self.assertIsNone(status['error'])
+        with closing(sqlite3.connect(self.db)) as db:
+            db.execute('INSERT INTO crawl_errors VALUES(2,?,?)',(self.started.isoformat(),'temporary resource failure'))
+            db.commit()
+        run=dict(self.run,exit_code=-2,maintenance=USER_STOP)
+        self.assertEqual(self.describe(run=run)['error'],'temporary resource failure')
+        status=startup.describe(self.output,'zillow',self.db,run,{'stop_reason':'Failure limit'},False,False)
+        self.assertEqual(status['error'],'Failure limit')
+        self.assertEqual(status['phase'],'failed')
+
 
     def test_same_launcher_pid_keeps_attempt_during_slow_rel_setup(self):
         token=startup.begin(self.output,'zillow',self.db)
