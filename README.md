@@ -43,3 +43,11 @@ posts new matches to the REL WhatsApp group through WhatsApp Web.
 Create the Action inside REL with the supplied [prompt](facebook-marketplace/ACTION.md).
 REL manages scheduling and browser execution; no scripts or external scheduler
 are required. Keep REL running and WhatsApp Web signed in.
+
+## Public X narrative propagation
+
+[Collect and study observable sharing among a public political sample](x-propagation/README.md).
+Uses an authenticated caller-owned REL session, bounded Crawlee cycles, raw
+captures, versioned observations, and separately reviewed propagation evidence.
+The initial episode examines the Talarico hospital allegation and the center's
+denial; the case-study setup records pilot and scheduling status.

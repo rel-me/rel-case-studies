@@ -1,0 +1,2 @@
+rel-playwright @ git+https://github.com/rel-me/rel-tools.git@d521d5c0e74fe993fa5d1ebb68c604b3ad45fd91#subdirectory=playwright
+rel-crawlee @ git+https://github.com/rel-me/rel-tools.git@d521d5c0e74fe993fa5d1ebb68c604b3ad45fd91#subdirectory=crawlee

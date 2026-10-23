@@ -1,0 +1,138 @@
+{
+  "episode": "Public campaign-video allegation: observable common-source reference",
+  "reviewed_at_utc": "2026-10-20T16:51:26.903527+00:00",
+  "review_file": "data/reviews/20261020T131459.json",
+  "review_status": "bounded_reference_verification",
+  "claim_status": "Underlying video identity, claimed family relationship and allegations not independently verified; study documents visible attribution and sharing only",
+  "sources": [
+    {
+      "url": "https://x.com/RheinAmacher/status/2112487984725676383",
+      "publication_timestamp_utc": "2026-10-20T10:15:58.000Z",
+      "capture": "data/raw/20261020T111522-monitor/f89af372225205a7-0-111851299404.html",
+      "stance": "quoting",
+      "own_reaction": "Oof…",
+      "quoted_author_visible": "Walter Curt @wcdispatch",
+      "quoted_post_id": null,
+      "quoted_text_status": "incomplete"
+    },
+    {
+      "url": "https://x.com/EricLDaugh/status/2112505876292468997",
+      "publication_timestamp_utc": "2026-10-20T11:27:04.000Z",
+      "capture": "data/raw/20261020T111522-monitor/006472544a3cff89-0-132226186141.html",
+      "stance": "endorsing",
+      "text_status": "rendered_text",
+      "visible_source_video_url": "https://x.com/wcdispatch/status/2112388948563554668/video/1"
+    },
+    {
+      "url": "https://x.com/wcdispatch/status/2112388948563554668",
+      "role": "referenced_source_post",
+      "publication_timestamp_utc": null,
+      "independently_opened": false,
+      "reference_observed_in": "data/raw/20261020T111522-monitor/006472544a3cff89-0-132226186141.html"
+    },
+    {
+      "url": "https://x.com/LauraLoomer/status/2112533437714518126",
+      "publication_timestamp_utc": "2026-10-20T13:16:35.000Z",
+      "capture": "data/raw/20261020T134513-monitor/a7dfc9eb79a25e44-0-141712417346.html",
+      "text_status": "rendered_text",
+      "stance": "endorsing",
+      "quoted_author_visible": "Walter Curt @wcdispatch",
+      "quoted_post_id": null,
+      "quoted_text_status": "incomplete",
+      "qualification": "Adds an observed endorsement, not a verified source-post edge; canonical quoted source and underlying allegations remain unverified"
+    },
+    {
+      "url": "https://x.com/LauraLoomer/status/2112577429781073981",
+      "publication_timestamp_utc": "2026-10-20T16:11:23.000Z",
+      "capture": "data/raw/20261020T154514-monitor/a7dfc9eb79a25e44-2-161553492899.html",
+      "text_status": "rendered_text",
+      "stance": "disputing",
+      "stance_target": "quoted Polymarket election-odds claim",
+      "secondary_stance": "endorses existing campaign-video allegation and asserts favorable polling",
+      "visible_quoted_source_url": "https://x.com/Polymarket/status/2112561485972955405",
+      "qualification": "Market odds, polling and underlying campaign-video allegations unverified; sharing reference documents dispute, not truth or endorsement"
+    },
+    {
+      "url": "https://x.com/Polymarket/status/2112561485972955405",
+      "role": "referenced_source_post_disputed",
+      "publication_timestamp_utc": null,
+      "independently_opened": false,
+      "reference_observed_in": "data/raw/20261020T154514-monitor/a7dfc9eb79a25e44-2-161553492899.html"
+    },
+    {
+      "url": "https://x.com/DineshDSouza/status/2112584157654040691",
+      "publication_timestamp_utc": "2026-10-20T16:38:07.000Z",
+      "capture": "data/raw/20261020T154514-monitor/9b16013ded3bc734-2-164534383224.html",
+      "text_status": "rendered_text",
+      "stance": "endorsing",
+      "canonical_source_post_reference": null,
+      "qualification": "Repeats campaign-video allegation and asserts candidate response. Underlying video identity, family relationship, history, conduct and response unverified; no direct seed-to-seed transmission link."
+    },
+    {
+      "url": "https://x.com/DonaldJTrumpJr/status/2112566681210122462",
+      "publication_timestamp_utc": "2026-10-20T15:28:41.000Z",
+      "capture": "data/raw/20261020T154514-monitor/7c82d1ff8bd46c13-0-164943918782.html",
+      "text_status": "rendered_text",
+      "stance": "quoting",
+      "own_stance_limit": "Promotional/critical reaction; belief in each quoted assertion unresolved",
+      "quoted_author_visible": "Eric Daugherty @EricLDaugh",
+      "quoted_post_id": null,
+      "quoted_text_status": "incomplete",
+      "qualification": "No canonical quoted-post assignment by author or wording alone; no new transmission edge; underlying allegations unverified"
+    }
+  ],
+  "edges": [
+    {
+      "from_post_id": "2112388948563554668",
+      "to_post_id": "2112505876292468997",
+      "category": "explicit_sharing",
+      "relationship": "source_post_video_link",
+      "basis": "Canonical wcdispatch status video URL visible in full Daugherty text and rendered HTML"
+    },
+    {
+      "from_post_id": "2112561485972955405",
+      "to_post_id": "2112577429781073981",
+      "category": "explicit_sharing",
+      "relationship": "quote_with_visible_source_post_photo_links",
+      "stance": "disputing",
+      "stance_target": "election odds",
+      "basis": "Visible Polymarket quote card and canonical source status ID in photo links within Loomer’s article",
+      "capture": "data/raw/20261020T154514-monitor/a7dfc9eb79a25e44-2-161553492899.html",
+      "limit": "Not endorsement of odds or a source link for the repeated campaign-video allegation"
+    }
+  ],
+  "shared_source_candidate": {
+    "posts": [
+      "2112487984725676383",
+      "2112505876292468997"
+    ],
+    "basis": "Both visibly attribute campaign-video material to wcdispatch; Amacher quote content and Daugherty report concern the same stated campaign allegation",
+    "classification": "common_source_candidate",
+    "source_post_for_Amacher": null,
+    "seed_post_publication_difference_seconds": 4266,
+    "limits": [
+      "No direct Amacher–Daugherty edge",
+      "No canonical source-post assignment to Amacher by author or wording alone",
+      "Timing is descriptive and not evidence of transmission"
+    ],
+    "additional_observations": [
+      {
+        "post_url": "https://x.com/LauraLoomer/status/2112533437714518126",
+        "basis": "Same visible quoted-author handle and distinctive incomplete quotation",
+        "quoted_source_post_id": null,
+        "edge_added": false
+      }
+    ]
+  },
+  "limitations": [
+    "Source post and video were not independently opened or authenticated",
+    "Claimed identities, family relationship, childhood history and alleged conduct not independently verified",
+    "No health or intent inference",
+    "Common public footage or ordinary campaign reporting can explain overlap",
+    "Truncation recovery is not proof of an edit",
+    "No coordination, bot, ownership or repeated-timing conclusion",
+    "No expansion account traversal or increased search/detail budget",
+    "Loomer calls her own assertion polling while the quoted source describes odds; neither measure is independently verified"
+  ],
+  "latest_follow_up_review_file": "data/reviews/20261020T164500.json"
+}

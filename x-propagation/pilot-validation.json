@@ -1,0 +1,35 @@
+{
+  "verified_at_utc": "2026-10-20T06:49:25.837668+00:00",
+  "posts": [
+    {
+      "post_id": "2108903544426266990",
+      "url": "https://x.com/CarolineWren/status/2108903544426266990",
+      "capture": "data/raw/20261020T064429-pilot/d5697df72a870eee-0.html",
+      "text_characters": 591,
+      "publication_timestamp_utc": "2026-10-10T12:52:41.000Z",
+      "validated_against": "Manually opened REL detail page; author, complete beginning/end and UTC time attribute"
+    },
+    {
+      "post_id": "2108909919105626224",
+      "url": "https://x.com/SaraGonzalesTX/status/2108909919105626224",
+      "capture": "data/raw/20261020T064429-pilot/1a3838df8ea4e4d3-0.html",
+      "text_characters": 132,
+      "publication_timestamp_utc": "2026-10-10T13:18:01.000Z",
+      "validated_against": "Manually opened REL detail page; author, complete beginning/end and UTC time attribute"
+    },
+    {
+      "post_id": "2109329520247660715",
+      "url": "https://x.com/nicksortor/status/2109329520247660715",
+      "capture": "data/raw/20261020T064429-pilot/7df5e52ce10fdcab-0.html",
+      "text_characters": 780,
+      "publication_timestamp_utc": "2026-10-11T17:05:21.000Z",
+      "validated_against": "Manually opened REL detail page; author, complete beginning/end and UTC time attribute"
+    }
+  ],
+  "limitations": [
+    "Bounded timeline/history coverage",
+    "Unsupported post relationships stay unclassified",
+    "Non-text media is not transcribed",
+    "No post deletion inference"
+  ]
+}

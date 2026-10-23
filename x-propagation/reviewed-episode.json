@@ -1,0 +1,177 @@
+{
+  "episode": "Talarico hospital allegation",
+  "review_status": "initial_manual_REL_review",
+  "claim_status": "Contradicted by the named center's public denial; Poynter/PolitiFact rates the claim false",
+  "earliest_observed_qualification": "Earliest among directly opened episode posts, not the original source",
+  "sources": [
+    {
+      "url": "https://x.com/CarolineWren/status/2108903544426266990",
+      "stance": "suggests_allegation",
+      "role": "flight_speculation"
+    },
+    {
+      "url": "https://x.com/SaraGonzalesTX/status/2108909919105626224",
+      "stance": "endorses_allegation",
+      "role": "quote_of_Wren"
+    },
+    {
+      "url": "https://x.com/nicksortor/status/2109329520247660715",
+      "stance": "asserts_allegation",
+      "role": "confirmation_assertion"
+    },
+    {
+      "url": "https://x.com/RheinAmacher/status/2109330209195667874",
+      "stance": "asserts_allegation",
+      "role": "recorded_call_assertion"
+    },
+    {
+      "url": "https://x.com/mattvanswol/status/2109330107068498007",
+      "stance": "endorses_allegation",
+      "role": "reaction_in_Sortor_conversation"
+    },
+    {
+      "url": "https://x.com/elonmusk/status/2109349314912764171",
+      "stance": "unresolved",
+      "role": "ambiguous_reaction"
+    },
+    {
+      "url": "https://x.com/SaraGonzalesTX/status/2109331268886499654",
+      "stance": "shares_allegation",
+      "role": "quote_of_Sortor"
+    },
+    {
+      "url": "https://x.com/LindnerCtrHope/status/2109430626562785517",
+      "stance": "denies_allegation",
+      "role": "primary_source_denial"
+    },
+    {
+      "url": "https://x.com/EricLDaugh/status/2109330545834442967",
+      "stance": "asserts_allegation",
+      "role": "explicit_link_to_Sortor_video"
+    },
+    {
+      "url": "https://x.com/bennyjohnson/status/2108598782610829649",
+      "stance": "speculative_amplification",
+      "role": "repeats_speculation_attributed_to_Pratt_and_Musk"
+    },
+    {
+      "url": "https://x.com/spencerpratt/status/2108553958696399249",
+      "stance": "speculative_amplification",
+      "role": "earlier_facility_sources_assertion_with_conditional_qualifications"
+    },
+    {
+      "url": "https://x.com/LauraLoomer/status/2109352779760218212",
+      "stance": "conditional_amplification",
+      "role": "Sortor_quote_visible_in_X_search"
+    },
+    {
+      "url": "https://x.com/RichardGrenell/status/2109265270984347933",
+      "stance": "related_suspicion",
+      "role": "questions_flu_explanation"
+    },
+    {
+      "url": "https://x.com/elonmusk/status/2109346652565946776",
+      "stance": "related_suspicion",
+      "role": "campaign_hiding_something_big_reply"
+    },
+    {
+      "url": "https://x.com/mattvanswol/status/2109444969094414730",
+      "stance": "disputes_denial",
+      "role": "conditional_challenge_after_center_denial",
+      "capture": "data/raw/20261020T072011-baseline/480c2d72792a35a4-0-102749246257.html",
+      "publication_timestamp_utc": "2026-10-12T00:44:06.000Z"
+    },
+    {
+      "url": "https://x.com/GuntherEagleman/status/2109730359202177260",
+      "stance": "related_suspicion",
+      "role": "absence_and_flu_questions_with_facility_denial_mention",
+      "capture": "data/raw/20261020T072011-baseline/0688d45083ab9ef7-0-103334035725.html",
+      "publication_timestamp_utc": "2026-10-12T19:38:09.000Z"
+    }
+  ],
+  "edges": [
+    {
+      "from_post_id": "2108903544426266990",
+      "to_post_id": "2108909919105626224",
+      "category": "explicit_sharing",
+      "relationship": "quote",
+      "basis": "Wren quote card visible in Gonzales detail page"
+    },
+    {
+      "from_post_id": "2109329520247660715",
+      "to_post_id": "2109331268886499654",
+      "category": "explicit_sharing",
+      "relationship": "quote",
+      "basis": "Sortor quote card visible in Gonzales conversation and saved detail HTML"
+    },
+    {
+      "from_post_id": "2108903544426266990",
+      "to_post_id": "2109329520247660715",
+      "category": "possible_transmission",
+      "relationship": "account_attribution",
+      "basis": "Sortor explicitly credits Wren; exact source post not identified"
+    },
+    {
+      "from_post_id": "2108909919105626224",
+      "to_post_id": "2109329520247660715",
+      "category": "possible_transmission",
+      "relationship": "account_attribution",
+      "basis": "Sortor explicitly credits Gonzales; exact source post not identified"
+    },
+    {
+      "from_post_id": "2109329520247660715",
+      "to_post_id": "2109330545834442967",
+      "category": "explicit_sharing",
+      "relationship": "source_post_video_link",
+      "basis": "Daugherty full text and HTML contain a canonical Sortor status video URL"
+    }
+  ],
+  "limitations": [
+    "Purposive sample",
+    "One-hop expansion only",
+    "Search and reply ranking are not chronological evidence",
+    "Shared flight and call material may explain overlap",
+    "No finding of coordination or automation",
+    "No longitudinal influence ranking"
+  ],
+  "earliest_observed": {
+    "url": "https://x.com/spencerpratt/status/2108553958696399249",
+    "publication_timestamp_utc": "2026-10-09T13:43:33.000Z",
+    "qualification": "Earliest observed among directly opened episode posts after sample expansion; not established original source"
+  },
+  "expanded_reviewed_at_utc": "2026-10-20T07:08:59.094039+00:00",
+  "last_collection_review": {
+    "run_id": "20261020T072011-baseline",
+    "review_file": "data/reviews/20261020T101958.json",
+    "status": "baseline_completed_with_coverage_gaps",
+    "new_confirmed_transmission_edges": 0,
+    "new_edges_in_other_episode_reviews": 1,
+    "note": "New Van Swol challenge after center denial documented; Loomer, Eagleman and Musk standalone-text gaps resolved. Existing Talarico graph unchanged.",
+    "extraction_correction_audit": "data/reviews/20261020-quote-extraction-audit.json"
+  },
+  "verified_follow_up": {
+    "post_url": "https://x.com/mattvanswol/status/2109444969094414730",
+    "capture": "data/raw/20261020T072011-baseline/480c2d72792a35a4-0-102749246257.html",
+    "publication_timestamp_utc": "2026-10-12T00:44:06.000Z",
+    "denial_post_url": "https://x.com/LindnerCtrHope/status/2109430626562785517",
+    "denial_capture": "data/raw/20261020T072011-baseline/480c2d72792a35a4-0-102749246257.html",
+    "seconds_after_denial": 3419.0,
+    "observed": "Van Swol conditionally challenges center denial by referring to alleged audio.",
+    "limits": [
+      "Captured in center denial conversation, but reply parent ID not independently established",
+      "No new transmission edge or health inference"
+    ]
+  },
+  "other_episode_reviews": [
+    "reviewed-milan-episode.json",
+    "reviewed-campaign-video-episode.json"
+  ],
+  "last_cross_episode_review": {
+    "review_file": "data/reviews/20261020T164500.json",
+    "new_edges_in_other_episode_reviews": 0,
+    "new_talarico_edges": 0,
+    "new_observations_in_other_episode_reviews": 2,
+    "episode_review": "reviewed-campaign-video-episode.json",
+    "qualification": "D’Souza endorsement and Trump Jr. named-author quotation observed; exact source IDs and underlying allegations remain unresolved/unverified as recorded"
+  }
+}
