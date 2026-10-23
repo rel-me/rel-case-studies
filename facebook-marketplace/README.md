@@ -31,7 +31,8 @@ Requires a REL build with **Settings → Actions** and `rel.action` imports.
    **Add Action**, configure an AI provider/model, and sign in to Facebook.
 4. Review the installed steps and access checklist. In the session's
    **Actions → Edit Action**, choose **Repeat every**, **30 minutes**, and
-   **Ends → Never**. Leave disabled while access and delivery are incomplete.
+   **Ends → Never**. Edit the existing Action rather than creating additional
+   clock-time Actions. Leave disabled while access and delivery are incomplete.
 5. Use **Run Now** for a one-time research check. Selecting **When finished →
    WhatsApp** makes a successful run send its final response to the saved group.
 
