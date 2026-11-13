@@ -165,3 +165,14 @@ keeps heartbeat monitoring from restarting it; the dashboard Restart button
 explicitly resumes that user pause. Other maintenance remains blocked.
 Logs, captures, terminal failures and failure streaks are retained. The other
 crawler and REL sessions are left running.
+
+### Shared REL Project
+
+Both property crawlers can use one explicit REL Project while retaining separate
+Sessions and Profiles. Pass `--project-id PROJECT_ID` with `--profile Zillow`
+for Zillow or `--profile Datacenter` for tax. Session checkpoints retain that
+Project binding, and saved restart commands preserve the argument. Missing
+Sessions are created in the bound Project; conflicting saved Project/Profile
+ownership fails instead of silently selecting another Session. Do not share a
+Session between the two workers. Existing Sessions and private queues/captures
+are not deleted when an operator explicitly rebinds the crawler checkpoints.
