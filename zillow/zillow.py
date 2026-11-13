@@ -333,7 +333,7 @@ async def crawl(args):
             inventory.export_addresses(db, args.output / 'inventory/addresses.csv')
         rules = RotationRules.load(getattr(args, 'rotation_rules', ROOT / 'rotation-rules.json'))
         recovery = SessionRecovery(args.output / 'session.json', args.profile, args.base_url,
-                                   'zillow-case-study', rules)
+                                   'zillow-case-study', rules, project_id=getattr(args,'project_id',None))
         async def enqueue_recovery(payload):
             await queue.add_requests([Request.from_url(**payload)], forefront=True,
                                      wait_for_all_requests_to_be_added=True)
@@ -412,6 +412,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=ROOT / 'output')
     parser.add_argument('--base-url', required=True)
+    parser.add_argument('--project-id',help='REL Project for this crawler Session; reuse the saved binding on restart')
     parser.add_argument('--profile', required=True, help='REL Profile name (configured with any proxy or no proxy)')
     parser.add_argument('--max-addresses', type=int, default=50, help='Maximum distinct home detail pages per run')
     parser.add_argument('--max-pages', type=int, default=500, help='Safety limit including search pages')

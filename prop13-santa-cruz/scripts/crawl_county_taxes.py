@@ -18,6 +18,7 @@ from pathlib import Path
 import random
 import re
 import sqlite3
+import signal
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "zillow"))
 from crawl_areas import parcel_areas
@@ -39,6 +40,11 @@ async def ensure_session(args):
     state=json.loads(path.read_text()) if path.exists() else {}
     if state and (state.get('profile')!=args.profile or state.get('base_url')!=args.base_url or state.get('group')!='prop13-county-taxes'):
         raise ValueError('County session belongs to another profile, group or endpoint')
+    project_id=getattr(args,'project_id',None)
+    if project_id:
+        if state.get('project_id') and state['project_id']!=project_id:
+            raise ValueError('County session belongs to a different Project')
+        state['project_id']=project_id
     state = await resolve_profile_session(ProfileSessionApi(args.base_url), state, args.profile, 'prop13-county-taxes')
     state['base_url'] = args.base_url
     temporary=path.with_suffix('.tmp');temporary.write_text(json.dumps(state,indent=2)+'\n');temporary.replace(path)
@@ -619,6 +625,7 @@ def main():
     parser.add_argument('--tax-database',type=Path,
                         help='Database for county-tax tables; use the inventory path to keep both datasets in one SQLite file')
     parser.add_argument('--base-url',default='http://127.0.0.1:17319/v1')
+    parser.add_argument('--project-id',help='REL Project for the county crawler Session')
     parser.add_argument('--profile',choices=('Native','Datacenter'),default='Native',
                         help='REL browser profile; Datacenter explicitly uses the configured datacenter proxy')
     parser.add_argument('--session-file',type=Path,help='Persistent session state file (kept separate per profile)')
@@ -649,5 +656,6 @@ def main():
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal.default_int_handler)
     try: raise SystemExit(main())
     except KeyboardInterrupt: raise SystemExit(130)

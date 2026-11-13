@@ -121,3 +121,28 @@ class ProjectSessionTests(unittest.IsolatedAsyncioTestCase):
                 with self.assertRaisesRegex(ValueError,'Profile or Project'):
                     await resolve_profile_session(api,{'session_id':'Session7','profile':'Datacenter','project_id':'ProjectDefault'},'Datacenter','tax')
                 self.assertTrue(all(method=='GET' for method,_,_ in api.calls))
+
+
+class ProjectCreationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_missing_session_creation_uses_the_explicit_project_and_no_group(self):
+        for profile in ['Zillow','Datacenter']:
+            with self.subTest(profile=profile):
+                api=Api()
+                state={'session_id':'Missing','profile':profile,'project_id':'SharedProject','group_id':'OldGroup','consecutive_failures':4}
+                updated=await resolve_profile_session(api,state,profile,'crawl')
+                self.assertEqual(updated['project_id'],'SharedProject')
+                self.assertEqual(updated['session_id'],'Session9')
+                self.assertEqual(updated['consecutive_failures'],4)
+                self.assertNotIn('group_id',updated)
+                self.assertEqual(api.calls,[('GET','/sessions/Missing',None),('POST','/sessions',{
+                    'project_id':'SharedProject','profile':profile,'lifetime':{'type':'indefinite'}})])
+
+    async def test_created_session_cannot_cross_project_or_profile(self):
+        for change in [{'project_id':'Other'},{'profile':'Other'},{'id':''}]:
+            class Wrong(Api):
+                async def call(self,method,path,payload=None):
+                    response=await super().call(method,path,payload)
+                    if method=='POST':response['session'].update(change)
+                    return response
+            with self.subTest(change=change),self.assertRaisesRegex(ValueError,'configured Profile or Project'):
+                await resolve_profile_session(Wrong(),{'profile':'Zillow','project_id':'SharedProject'},'Zillow','crawl')

@@ -63,6 +63,18 @@ async def resolve_profile_session(api, state, profile, group):
             if session.get('profile') != profile or session.get('group') != group:
                 raise ValueError('Saved REL session belongs to a different Profile or crawler group')
             return dict(state,session_id=session['id'],profile=profile,group=group)
+    if state.get('project_id'):
+        if session:
+            raise ValueError('Saved REL session does not expose its configured Project')
+        project = state['project_id']
+        created = (await api.call('POST','/sessions',{
+            'project_id':project,'profile':profile,'lifetime':{'type':'indefinite'}}))['session']
+        if (not isinstance(created.get('id'),str) or not created['id']
+                or created.get('project_id') != project or created.get('profile') != profile):
+            raise ValueError('Created REL session does not belong to the configured Profile or Project')
+        updated = dict(state,session_id=created['id'],profile=profile,group=group)
+        updated.pop('group_id',None);updated.pop('storage_id',None)
+        return updated
     try: groups = (await api.call('GET','/groups'))['groups']
     except Exception as error:
         # Older REL releases have the original session-only API.

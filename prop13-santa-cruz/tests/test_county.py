@@ -330,3 +330,17 @@ class RetrySearchFormTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(TimeoutError):
             await county.restore_search_form(page,AsyncMock(),force_reload=True)
         page.goto.assert_awaited_once();page.locator.return_value.wait_for.assert_awaited_once()
+
+
+class InterruptInheritanceTests(unittest.TestCase):
+    def test_tax_entrypoint_resets_an_inherited_ignored_interrupt(self):
+        import subprocess,sys
+        code="""import runpy,signal,sys
+signal.signal(signal.SIGINT,signal.SIG_IGN)
+sys.argv=[sys.argv[1],'--help']
+try:runpy.run_path(sys.argv[0],run_name='__main__')
+except SystemExit as error:assert error.code==0
+assert signal.getsignal(signal.SIGINT)==signal.default_int_handler
+"""
+        result=subprocess.run([sys.executable,'-c',code,str(path)],capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)

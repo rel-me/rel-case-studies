@@ -191,5 +191,22 @@ class SessionRecoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manager.state['consecutive_skips'], 1)
 
 
+    async def test_project_replacement_preserves_scope_without_legacy_group(self):
+        state=json.loads(self.path.read_text());state['project_id']='SharedProject';self.path.write_text(json.dumps(state))
+        self.api.sessions['Session9001'].pop('group')
+        self.api.sessions['Session9001']['project_id']='SharedProject'
+        manager=self.manager()
+        self.assertEqual(await manager.replace(),'Session9002')
+        created=self.api.sessions['Session9002']
+        self.assertEqual(created['project_id'],'SharedProject')
+        self.assertEqual(created['profile'],'Test')
+        self.assertNotIn('group',created)
+        self.assertFalse(any('/rotate-session' in path for _,path,_ in self.api.calls))
+
+    def test_requested_project_cannot_override_a_saved_binding(self):
+        state=json.loads(self.path.read_text());state['project_id']='Original';self.path.write_text(json.dumps(state))
+        with self.assertRaisesRegex(ValueError,'different Project'):
+            SessionRecovery(self.path,'Test','http://localhost:17319/v1','test-crawl',api=self.api,project_id='Other')
+
 if __name__ == '__main__':
     unittest.main()
