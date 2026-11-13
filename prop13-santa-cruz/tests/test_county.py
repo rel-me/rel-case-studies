@@ -344,3 +344,43 @@ assert signal.getsignal(signal.SIGINT)==signal.default_int_handler
 """
         result=subprocess.run([sys.executable,'-c',code,str(path)],capture_output=True,text=True,timeout=10)
         self.assertEqual(result.returncode,0,result.stderr)
+
+
+class CountyProjectCheckpointTests(unittest.IsolatedAsyncioTestCase):
+    async def test_fresh_project_session_is_created_and_saved_scope_is_reused(self):
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint=Path(directory)/'session.json'
+            args=SimpleNamespace(base_url='http://localhost:17319/v1',session_file=checkpoint,
+                                 profile='Datacenter',project_id='SharedProject')
+            api=Mock()
+            api.call=AsyncMock(return_value={'session':{'id':'Session7','profile':'Datacenter','project_id':'SharedProject'}})
+            with patch.object(county,'ProfileSessionApi',return_value=api):
+                self.assertEqual(await county.ensure_session(args),'Session7')
+                api.call.assert_awaited_once_with('POST','/sessions',{'profile':'Datacenter','project_id':'SharedProject','lifetime':{'type':'indefinite'}})
+                state=json.loads(checkpoint.read_text())
+                self.assertEqual(state['project_id'],'SharedProject')
+                self.assertEqual(state['group'],'prop13-county-taxes')
+                self.assertEqual(state['base_url'],args.base_url)
+                args.project_id=None;api.call.reset_mock()
+                self.assertEqual(await county.ensure_session(args),'Session7')
+                api.call.assert_awaited_once_with('GET','/sessions/Session7')
+
+    async def test_project_cli_cannot_override_saved_county_scope(self):
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint=Path(directory)/'session.json'
+            checkpoint.write_text(json.dumps({'profile':'Datacenter','base_url':'http://localhost:17319/v1',
+                'group':'prop13-county-taxes','project_id':'Original','session_id':'Session7'}))
+            before=checkpoint.read_bytes()
+            args=SimpleNamespace(base_url='http://localhost:17319/v1',session_file=checkpoint,
+                                 profile='Datacenter',project_id='Other')
+            with patch.object(county,'ProfileSessionApi') as api:
+                with self.assertRaisesRegex(ValueError,'different Project'):
+                    await county.ensure_session(args)
+                api.assert_not_called()
+            self.assertEqual(checkpoint.read_bytes(),before)

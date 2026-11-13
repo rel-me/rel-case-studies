@@ -60,6 +60,8 @@ async def resolve_profile_session(api, state, profile, group):
             updated.pop('storage_id', None)
             return updated
         if session and 'group_id' not in session:
+            if state.get('project_id'):
+                raise ValueError('Saved REL session does not expose its configured Project')
             if session.get('profile') != profile or session.get('group') != group:
                 raise ValueError('Saved REL session belongs to a different Profile or crawler group')
             return dict(state,session_id=session['id'],profile=profile,group=group)

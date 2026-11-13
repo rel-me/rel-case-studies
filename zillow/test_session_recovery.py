@@ -208,5 +208,27 @@ class SessionRecoveryTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(ValueError,'different Project'):
             SessionRecovery(self.path,'Test','http://localhost:17319/v1','test-crawl',api=self.api,project_id='Other')
 
+    async def test_fresh_session_checkpoint_persists_requested_project(self):
+        self.path.unlink()
+        manager=SessionRecovery(self.path,'Test','http://localhost:17319/v1','test-crawl',api=self.api,project_id='SharedProject')
+        session_id=await manager.ensure()
+        self.assertEqual(manager.state['project_id'],'SharedProject')
+        self.assertEqual(json.loads(self.path.read_text())['project_id'],'SharedProject')
+        self.assertEqual(self.api.sessions[session_id]['project_id'],'SharedProject')
+        self.assertNotIn('group',self.api.sessions[session_id])
+
+    async def test_pending_replacement_cannot_cross_a_changed_project_scope(self):
+        for checkpointed_project in [None,'OldProject']:
+            with self.subTest(checkpointed_project=checkpointed_project):
+                state=json.loads(self.path.read_text())
+                state.update(project_id='SharedProject',replacement_pending={
+                    'old_id':'Session9001','options':{},'project_id':checkpointed_project})
+                self.path.write_text(json.dumps(state));before=self.path.read_bytes()
+                manager=self.manager()
+                with self.assertRaisesRegex(RuntimeError,'Checkpointed replacement belongs to a different Project'):
+                    await manager.replace()
+                self.assertEqual(self.path.read_bytes(),before)
+                self.assertEqual(self.api.calls,[])
+
 if __name__ == '__main__':
     unittest.main()

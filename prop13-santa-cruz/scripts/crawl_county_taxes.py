@@ -45,6 +45,7 @@ async def ensure_session(args):
         if state.get('project_id') and state['project_id']!=project_id:
             raise ValueError('County session belongs to a different Project')
         state['project_id']=project_id
+    state.update(profile=args.profile, group='prop13-county-taxes')
     state = await resolve_profile_session(ProfileSessionApi(args.base_url), state, args.profile, 'prop13-county-taxes')
     state['base_url'] = args.base_url
     temporary=path.with_suffix('.tmp');temporary.write_text(json.dumps(state,indent=2)+'\n');temporary.replace(path)

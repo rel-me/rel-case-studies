@@ -180,6 +180,8 @@ class SessionRecovery:
                 'project_id': project})
             self.save()
         pending = self.state['replacement_pending']
+        if pending.get('project_id') != self.state.get('project_id'):
+            raise RuntimeError('Checkpointed replacement belongs to a different Project; explicit review required')
         alias = pending['options'].get('proxy_alias')
         if not pending['proxy_checked']:
             rotate = False

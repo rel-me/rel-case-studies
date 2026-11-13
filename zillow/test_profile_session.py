@@ -146,3 +146,11 @@ class ProjectCreationTests(unittest.IsolatedAsyncioTestCase):
                     return response
             with self.subTest(change=change),self.assertRaisesRegex(ValueError,'configured Profile or Project'):
                 await resolve_profile_session(Wrong(),{'profile':'Zillow','project_id':'SharedProject'},'Zillow','crawl')
+
+
+class ExplicitProjectLegacyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_explicit_project_cannot_reuse_unverifiable_legacy_session(self):
+        api=Api(sessions={'Session7':{'id':'Session7','profile':'Zillow','group':'crawl'}})
+        with self.assertRaisesRegex(ValueError,'configured Project'):
+            await resolve_profile_session(api,{'session_id':'Session7','profile':'Zillow','project_id':'SharedProject'},'Zillow','crawl')
+        self.assertEqual(api.calls,[('GET','/sessions/Session7',None)])
