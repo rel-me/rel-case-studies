@@ -409,7 +409,8 @@ async def crawl(args, db):
     # The installed legacy adapter sends tab IDs to REL's group-based history
     # route. Use one GET form load per parcel until that adapter is compatible.
     # All site traffic still goes through the same REL tab and profile.
-    history_supported = not json.loads(args.session_file.read_text()).get('group_id')
+    session_state = json.loads(args.session_file.read_text())
+    history_supported = not (session_state.get('group_id') or session_state.get('project_id'))
     config = Configuration(storage_dir=str(args.output/'county-crawlee'), purge_on_start=False, max_used_cpu_ratio=1.0)
     storage = FileSystemStorageClient()
     queue = await RequestQueue.open(name='county-full-bill-pages-v1', configuration=config, storage_client=storage)

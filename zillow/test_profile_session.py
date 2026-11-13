@@ -99,3 +99,25 @@ class ProfileSessionTests(unittest.IsolatedAsyncioTestCase):
             async def call(self,*args): raise ProfileSessionError({'id':'UPSTREAM_UNAVAILABLE'})
         with self.assertRaisesRegex(ProfileSessionError,'UPSTREAM_UNAVAILABLE'):
             await resolve_profile_session(Broken(),{},'Zillow','crawl')
+
+
+class ProjectSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_exact_saved_session_migrates_to_project_without_browser_mutation(self):
+        api=Api(sessions={'Session7':{'id':'Session7','project_id':'ProjectDefault','profile':'Datacenter'}})
+        state={'session_id':'Session7','profile':'Datacenter','group':'tax','group_id':'GroupOld','storage_id':'SessionOld','consecutive_failures':3}
+        result=await resolve_profile_session(api,state,'Datacenter','tax')
+        self.assertEqual(result['session_id'],'Session7')
+        self.assertEqual(result['project_id'],'ProjectDefault')
+        self.assertEqual(result['consecutive_failures'],3)
+        self.assertNotIn('group_id',result)
+        self.assertNotIn('storage_id',result)
+        self.assertEqual(api.calls,[('GET','/sessions/Session7',None)])
+
+    async def test_project_session_rejects_profile_project_and_identity_mismatches(self):
+        for changes in [{'profile':'Other'},{'project_id':'ProjectOther'},{'id':'Session8'},{'project_id':''}]:
+            with self.subTest(changes=changes):
+                session=dict(id='Session7',profile='Datacenter',project_id='ProjectDefault');session.update(changes)
+                api=Api(sessions={'Session7':session})
+                with self.assertRaisesRegex(ValueError,'Profile or Project'):
+                    await resolve_profile_session(api,{'session_id':'Session7','profile':'Datacenter','project_id':'ProjectDefault'},'Datacenter','tax')
+                self.assertTrue(all(method=='GET' for method,_,_ in api.calls))
