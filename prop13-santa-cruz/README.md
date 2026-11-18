@@ -248,3 +248,14 @@ submitted search via Back after a timeout. Ordinary successful requests retain
 the existing form/history reuse. The retry budget stays unchanged: if the fresh
 form still fails, normal failure accounting applies. Access denials still stop
 the crawl, and saved terminal failures or safety stops are not cleared/retried.
+
+### Shared REL Project
+
+Both property crawlers can use one explicit REL Project while retaining separate
+Sessions and Profiles. Pass `--project-id PROJECT_ID` with `--profile Zillow`
+for Zillow or `--profile Datacenter` for tax. Session checkpoints retain that
+Project binding, and saved restart commands preserve the argument. Missing
+Sessions are created in the bound Project; conflicting saved Project/Profile
+ownership fails instead of silently selecting another Session. Do not share a
+Session between the two workers. Existing Sessions and private queues/captures
+are not deleted when an operator explicitly rebinds the crawler checkpoints.
