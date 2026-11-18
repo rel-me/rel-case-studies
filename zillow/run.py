@@ -113,6 +113,7 @@ def run(args):
 
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, signal.default_int_handler)
     try:
         raise SystemExit(run(sys.argv[1:]))
     except (RuntimeError, subprocess.CalledProcessError) as error:

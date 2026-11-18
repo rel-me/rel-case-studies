@@ -11,7 +11,7 @@ import re
 import sqlite3
 import subprocess
 import restart_status
-from crawl_controls import ControlError, stop_worker, USER_STOP
+from crawl_controls import ControlError, stop_worker, USER_STOP, process_info, owns_process
 from crawl_areas import AREAS, NOTE as AREA_NOTE, parcel_areas, address_areas, apn_key
 from urllib.parse import parse_qs, urlsplit
 
@@ -200,19 +200,16 @@ def dashboard_data(path, params, county_inventory_path=None, tax_database_path=N
         db.close()
 
 
+def _worker_alive(run, worker, output):
+    """PID existence is insufficient: the OS may reuse it for another app."""
+    script = 'run.py' if worker == 'zillow' else 'crawl_county_taxes.py'
+    return owns_process(process_info(run.get('pid')), script, output)
+
+
 def _county_worker_running(run_file):
     if not run_file or not run_file.is_file():
         return False
-    try:
-        run = json.loads(run_file.read_text())
-        pid = int(run.get('pid', 0))
-        if pid <= 0:
-            return False
-        command = subprocess.run(['ps', '-p', str(pid), '-o', 'command='],
-                                 capture_output=True, text=True, timeout=2).stdout
-        return 'crawl_county_taxes.py' in command
-    except (OSError, ValueError, subprocess.SubprocessError, json.JSONDecodeError):
-        return False
+    return _worker_alive(_read_state(run_file), 'tax', run_file.parent)
 
 
 def _read_state(path):
@@ -247,7 +244,7 @@ def _restart_saved_crawler(database, worker, tax_run_file=None):
         run = _read_state(run_path)
         if run.get('maintenance') and run['maintenance'] != USER_STOP:
             raise ValueError('Crawler is under maintenance')
-        if _pid_alive(run.get('pid')):
+        if _worker_alive(run, worker, output):
             raise ValueError('Crawler is already running or starting')
         lock_path = output / ('zillow-run.lock' if worker == 'zillow' else 'run.lock')
         with lock_path.open('a') as lock:
@@ -299,7 +296,7 @@ def restart_crawler(database, worker, tax_run_file=None):
     run_file=output/'active-run.json' if worker=='zillow' else tax_run_file
     run=_read_state(run_file) if run_file else {}
     attempt=None
-    if not _pid_alive(run.get('pid')):
+    if not _worker_alive(run, worker, output):
         attempt=restart_status.begin(output,worker,database)
     try:
         response=_restart_saved_crawler(database,worker,tax_run_file)
@@ -322,7 +319,7 @@ def restart_progress_data(database,tax_database=None,tax_run_file=None):
         if not run_path:
             result[worker]={'available':False};continue
         run=_read_state(run_path);progress=_read_state(progress_path)
-        alive=_pid_alive(run.get('pid'))
+        alive=_worker_alive(run,worker,output)
         busy=worker_running(output) if worker=='zillow' else _county_worker_running(run_path)
         item=restart_status.describe(output,worker,(tax_database or database) if worker=='tax' else database,run,progress,alive,busy)
         item['can_restart']=bool(not alive and not busy and (not run.get('maintenance') or run['maintenance']==USER_STOP) and (run.get('launcher_command') if worker=='zillow' else run.get('command')))
@@ -365,8 +362,8 @@ def crawl_status_data(database, tax_database=None, tax_run_file=None):
         db.close()
     tax = tax_status_data(tax_database, tax_run_file)
     tax_run = _read_state(tax_run_file) if tax_run_file else {}
-    tax['can_restart'] = bool(tax.get('available') and not tax.get('running') and tax_run.get('command') and not tax_run.get('maintenance') and not _pid_alive(tax_run.get('pid')))
-    tax['starting'] = bool(not tax.get('running') and tax_run.get('status') == 'starting' and _pid_alive(tax_run.get('pid')))
+    tax['can_restart'] = bool(tax.get('available') and not tax.get('running') and tax_run.get('command') and not tax_run.get('maintenance') and not _worker_alive(tax_run,'tax',output))
+    tax['starting'] = bool(not tax.get('running') and tax_run.get('status') == 'starting' and _worker_alive(tax_run,'tax',output))
     tax_progress = _read_state((tax_run_file.parent if tax_run_file else output) / 'county-progress.json')
     tax['consecutive_failures'] = tax_progress.get('consecutive_failures', 0)
     tax['stop_reason'] = tax_progress.get('stop_reason') or tax.get('stop_reason')
@@ -375,8 +372,8 @@ def crawl_status_data(database, tax_database=None, tax_run_file=None):
     return {
         'zillow': {
             'available': True, 'running': running,
-            'can_restart': bool(not running and run.get('launcher_command') and not run.get('maintenance') and not _pid_alive(run.get('pid'))),
-            'starting': bool(not running and run.get('status') == 'starting' and _pid_alive(run.get('pid'))),
+            'can_restart': bool(not running and run.get('launcher_command') and not run.get('maintenance') and not _worker_alive(run,'zillow',output)),
+            'starting': bool(not running and run.get('status') == 'starting' and _worker_alive(run,'zillow',output)),
             'status': 'Running' if running else 'Stopped' if run or progress else 'Idle',
             'profile': run.get('profile'), 'last_capture': last_capture,
             'consecutive_failures': progress.get('consecutive_failures', 0),
