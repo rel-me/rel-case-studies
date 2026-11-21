@@ -249,6 +249,13 @@ the existing form/history reuse. The retry budget stays unchanged: if the fresh
 form still fails, normal failure accounting applies. Access denials still stop
 the crawl, and saved terminal failures or safety stops are not cleared/retried.
 
+When REL reports that browser configuration changed and requires a reload, the
+tax worker can replace its dedicated Session once and retry the parcel through
+the same Project, Profile, and proxy route. A successful parcel resets the
+recovery budget. The worker saves the budget across restarts and stops if
+replacement fails or REL requests another configuration reload before a parcel
+completes.
+
 ### Shared REL Project
 
 Both property crawlers can use one explicit REL Project while retaining separate
