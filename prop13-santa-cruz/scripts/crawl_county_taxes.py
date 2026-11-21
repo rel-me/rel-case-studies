@@ -67,7 +67,19 @@ def needs_configuration_reload(error):
 
 
 def can_replace_for_configuration_reload(error, consecutive_replacements):
-    return consecutive_replacements == 0 and needs_configuration_reload(error)
+    return (consecutive_replacements == 0 and needs_configuration_reload(error)
+            and not county_access_restricted(error))
+
+
+def county_error_status(error):
+    status = getattr(error, 'status_code', None)
+    details = getattr(error, 'details', None)
+    return status or (details.get('target_http_status') if isinstance(details, dict) else None)
+
+
+def county_access_restricted(error):
+    return (county_error_status(error) in (401, 403, 429)
+            or re.search(r'captcha|verify.*human|access.denied', str(error), re.I))
 
 
 async def replace_tax_session(args, session_id):
@@ -521,21 +533,8 @@ async def crawl(args, db):
             db.execute('INSERT INTO county_tax_errors(apn,occurred_at,error,terminal) VALUES(?,?,?,?)',
                        (apn,datetime.now(timezone.utc).isoformat(),str(error),int(terminal)))
 
-    async def process_parcel(context):
-        nonlocal failures, replacements, session, browser, page
-        if context.request.user_data.pop('recover_rel_configuration', False):
-            if replacements:
-                raise ConfigurationRecoveryFailed('The consecutive Session replacement budget is exhausted')
-            replacements += 1
-            save_progress()
-            try:
-                session = await replace_tax_session(args, session)
-                await browser.close()
-                browser = await playwright.chromium.launch(session_id=session, rel_base_url=args.base_url)
-                page = await browser.new_page()
-            except Exception as error:
-                raise ConfigurationRecoveryFailed(str(error)) from error
-            print(json.dumps({'session': session, 'recovery': 'REL configuration reload'}), flush=True)
+    async def process_parcel(context, force_reload=False):
+        nonlocal failures, replacements
         apn = context.request.user_data['apn']
         with db:
             db.execute("UPDATE county_tax_targets SET status='running',attempts=attempts+1,error=NULL WHERE apn=?",(apn,))
@@ -550,7 +549,7 @@ async def crawl(args, db):
         # The adapter's cached URL/DOM can be stale after a timed-out action.
         # Spend the existing Crawlee retry on one clean GET of the search form,
         # not on waiting for an input on the previous results/detail page.
-        mode=await search_form(force_reload=context.request.retry_count > 0)
+        mode=await search_form(force_reload=force_reload or context.request.retry_count > 0)
         print(json.dumps({'search_form':mode}),flush=True)
         async def reject_challenge():
             from selectolax.parser import HTMLParser
@@ -646,26 +645,38 @@ async def crawl(args, db):
 
     @crawler.router.default_handler
     async def handle(context):
+        nonlocal replacements, session, browser, page
         try:
             await process_parcel(context)
         except Exception as error:
-            if (isinstance(error, ConfigurationRecoveryFailed)
-                    or (needs_configuration_reload(error) and not can_replace_for_configuration_reload(error, replacements))):
-                context.request.no_retry = True
+            if not can_replace_for_configuration_reload(error, replacements):
+                if needs_configuration_reload(error) or county_access_restricted(error):
+                    context.request.no_retry = True
+                raise
+            record_error(context, error, False)
+
+        # Keep REL recovery independent of Crawlee's ordinary parcel retry.
+        replacements += 1
+        save_progress()
+        print(json.dumps({'recovery': 'Replacing tax Session after REL requested a reload'}), flush=True)
+        try:
+            session = await replace_tax_session(args, session)
+            await browser.close()
+            browser = await playwright.chromium.launch(session_id=session, rel_base_url=args.base_url)
+            page = await browser.new_page()
+        except Exception as error:
+            context.request.no_retry = True
+            raise ConfigurationRecoveryFailed(str(error)) from error
+        print(json.dumps({'session': session, 'recovery': 'Retrying parcel with replacement tax Session'}), flush=True)
+        try:
+            await process_parcel(context, force_reload=True)
+        except Exception:
+            context.request.no_retry = True
             raise
 
     @crawler.error_handler
     async def retry(context,error):
         record_error(context,error,False)
-        details=getattr(error,'details',None)
-        status=getattr(error,'status_code',None)
-        if isinstance(details,dict): status=status or details.get('target_http_status')
-        if status in (401,403,429) or re.search(r'captcha|verify.*human|access.denied',str(error),re.I):
-            context.request.no_retry=True
-            crawler.stop('County access restriction; checkpoint retained')
-            return
-        if can_replace_for_configuration_reload(error, replacements):
-            context.request.user_data['recover_rel_configuration'] = True
         context.request.forefront = True
         await asyncio.sleep(10)
 
@@ -674,15 +685,13 @@ async def crawl(args, db):
         nonlocal failures
         record_error(context,error,True)
         failures += 1
-        status = getattr(error,'status_code',None)
-        details = getattr(error,'details',None)
-        if isinstance(details,dict): status = status or details.get('target_http_status')
-        blocked = status in (401,403,429) or re.search(r'captcha|verify.*human|access.denied',str(error),re.I)
+        status = county_error_status(error)
+        blocked = county_access_restricted(error)
         state = 'blocked' if blocked else 'skipped' if status==404 else 'failed'
         with db:
             db.execute('UPDATE county_tax_targets SET status=?,error=? WHERE apn=?',(state,str(error),context.request.user_data['apn']))
         reason=('Access restriction; queue retained' if blocked else
-                RELOAD_STOP if (needs_configuration_reload(error) and not can_replace_for_configuration_reload(error, replacements)) or isinstance(error, ConfigurationRecoveryFailed) else
+                RELOAD_STOP if needs_configuration_reload(error) or isinstance(error, ConfigurationRecoveryFailed) else
                 f'More than {limit} consecutive failures; queue retained' if failures>limit else None)
         save_progress(reason)
         if reason: crawler.stop(reason)

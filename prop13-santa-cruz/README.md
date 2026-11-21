@@ -252,7 +252,8 @@ the crawl, and saved terminal failures or safety stops are not cleared/retried.
 When REL reports that browser configuration changed and requires a reload, the
 tax worker can replace its dedicated Session once and retry the parcel through
 the same Project, Profile, and proxy route. A successful parcel resets the
-recovery budget. The worker saves the budget across restarts and stops if
+recovery budget. This recovery is available even if Crawlee already used its
+ordinary parcel retry. The worker saves the budget across restarts and stops if
 replacement fails or REL requests another configuration reload before a parcel
 completes.
 

@@ -394,6 +394,9 @@ class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(county.needs_configuration_reload(RpcError(message)))
         self.assertTrue(county.can_replace_for_configuration_reload(RpcError(message), 0))
         self.assertFalse(county.can_replace_for_configuration_reload(RpcError(message), 1))
+        blocked = RpcError(message)
+        blocked.details = {'target_http_status': 403}
+        self.assertFalse(county.can_replace_for_configuration_reload(blocked, 0))
         self.assertFalse(county.needs_configuration_reload(RuntimeError(message)))
         self.assertFalse(county.can_replace_for_configuration_reload(RuntimeError(message), 0))
         self.assertFalse(county.needs_configuration_reload(RpcError('Browser process disconnected')))
