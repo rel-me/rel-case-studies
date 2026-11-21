@@ -330,3 +330,166 @@ class RetrySearchFormTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(TimeoutError):
             await county.restore_search_form(page,AsyncMock(),force_reload=True)
         page.goto.assert_awaited_once();page.locator.return_value.wait_for.assert_awaited_once()
+
+
+class InterruptInheritanceTests(unittest.TestCase):
+    def test_tax_entrypoint_resets_an_inherited_ignored_interrupt(self):
+        import subprocess,sys
+        code="""import runpy,signal,sys
+signal.signal(signal.SIGINT,signal.SIG_IGN)
+sys.argv=[sys.argv[1],'--help']
+try:runpy.run_path(sys.argv[0],run_name='__main__')
+except SystemExit as error:assert error.code==0
+assert signal.getsignal(signal.SIGINT)==signal.default_int_handler
+"""
+        result=subprocess.run([sys.executable,'-c',code,str(path)],capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,0,result.stderr)
+
+
+class CountyProjectCheckpointTests(unittest.IsolatedAsyncioTestCase):
+    async def test_fresh_project_session_is_created_and_saved_scope_is_reused(self):
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import AsyncMock, Mock, patch
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint=Path(directory)/'session.json'
+            args=SimpleNamespace(base_url='http://localhost:17319/v1',session_file=checkpoint,
+                                 profile='Datacenter',project_id='SharedProject')
+            api=Mock()
+            api.call=AsyncMock(return_value={'session':{'id':'Session7','profile':'Datacenter','project_id':'SharedProject'}})
+            with patch.object(county,'ProfileSessionApi',return_value=api):
+                self.assertEqual(await county.ensure_session(args),'Session7')
+                api.call.assert_awaited_once_with('POST','/sessions',{'profile':'Datacenter','project_id':'SharedProject','lifetime':{'type':'indefinite'}})
+                state=json.loads(checkpoint.read_text())
+                self.assertEqual(state['project_id'],'SharedProject')
+                self.assertEqual(state['group'],'prop13-county-taxes')
+                self.assertEqual(state['base_url'],args.base_url)
+                args.project_id=None;api.call.reset_mock()
+                self.assertEqual(await county.ensure_session(args),'Session7')
+                api.call.assert_awaited_once_with('GET','/sessions/Session7')
+
+    async def test_project_cli_cannot_override_saved_county_scope(self):
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint=Path(directory)/'session.json'
+            checkpoint.write_text(json.dumps({'profile':'Datacenter','base_url':'http://localhost:17319/v1',
+                'group':'prop13-county-taxes','project_id':'Original','session_id':'Session7'}))
+            before=checkpoint.read_bytes()
+            args=SimpleNamespace(base_url='http://localhost:17319/v1',session_file=checkpoint,
+                                 profile='Datacenter',project_id='Other')
+            with patch.object(county,'ProfileSessionApi') as api:
+                with self.assertRaisesRegex(ValueError,'different Project'):
+                    await county.ensure_session(args)
+                api.assert_not_called()
+            self.assertEqual(checkpoint.read_bytes(),before)
+
+
+class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
+    def test_reload_detection_requires_the_specific_rel_error(self):
+        message = 'BROWSER_UNAVAILABLE: Browser configuration changed. Choose Reload in REL to apply it before continuing automation.'
+        class RpcError(RuntimeError):
+            id = 'BROWSER_UNAVAILABLE'
+        self.assertTrue(county.needs_configuration_reload(RpcError(message)))
+        self.assertTrue(county.can_replace_for_configuration_reload(RpcError(message), 0))
+        self.assertFalse(county.can_replace_for_configuration_reload(RpcError(message), 1))
+        blocked = RpcError(message)
+        blocked.details = {'target_http_status': 403}
+        self.assertFalse(county.can_replace_for_configuration_reload(blocked, 0))
+        self.assertFalse(county.needs_configuration_reload(RuntimeError(message)))
+        self.assertFalse(county.can_replace_for_configuration_reload(RuntimeError(message), 0))
+        self.assertFalse(county.needs_configuration_reload(RpcError('Browser process disconnected')))
+
+    async def test_replacement_preserves_configuration_and_updates_before_retiring(self):
+        from unittest.mock import AsyncMock, patch
+        from types import SimpleNamespace
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / 'session.json'
+            args = SimpleNamespace(session_file=checkpoint, profile='Datacenter', base_url='http://localhost:17319/v1')
+            checkpoint.write_text(json.dumps({'project_id':'Study','session_id':'Session1',
+                'profile':args.profile,'base_url':args.base_url,'group':'prop13-county-taxes'}))
+            old = dict(id='Session1', name=county.TAX_SESSION_NAME, project_id='Study',
+                       profile='Datacenter', profile_id='profile', proxy_alias='configured',
+                       adblock_enabled=False, image_blocking_mode='none', image_size_limit_kb=100,
+                       fingerprint_profile={'seed':'old','locale':'en-US'})
+            async def call(method, endpoint, payload=None):
+                if method == 'GET':
+                    return {'session': old}
+                if method == 'POST':
+                    self.assertEqual(payload['project_id'], 'Study')
+                    self.assertEqual(payload['proxy_alias'], 'configured')
+                    self.assertNotIn('group_id', payload)
+                    self.assertNotEqual(payload['name'], old['name'])
+                    return {'session': dict(old, id='Session2', name=payload['name'],
+                                            fingerprint_profile={'seed':'generated','locale':'en-US'})}
+                self.assertEqual((method, endpoint), ('DELETE', '/sessions/Session1'))
+                self.assertEqual(json.loads(checkpoint.read_text())['session_id'], 'Session2')
+            with patch.object(county,'ProfileSessionApi') as api:
+                api.return_value.call = AsyncMock(side_effect=call)
+                self.assertEqual(await county.replace_tax_session(args, 'Session1'), 'Session2')
+                self.assertEqual([c.args[0] for c in api.return_value.call.await_args_list], ['GET','POST','DELETE'])
+
+    async def test_other_or_shared_sessions_are_never_replaced(self):
+        from unittest.mock import AsyncMock, patch
+        from types import SimpleNamespace
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / 'session.json'
+            args = SimpleNamespace(session_file=checkpoint, profile='Datacenter', base_url='http://localhost:17319/v1')
+            checkpoint.write_text(json.dumps({'project_id':'Study','session_id':'Session1',
+                'profile':args.profile,'base_url':args.base_url,'group':'prop13-county-taxes'}))
+            old = dict(id='Session1', name=county.TAX_SESSION_NAME, project_id='Study', profile='Datacenter')
+            for changes in [dict(name='Personal'), dict(group_id='Group1'), dict(project_id='Other')]:
+                with self.subTest(changes=changes), patch.object(county,'ProfileSessionApi') as api:
+                    api.return_value.call = AsyncMock(return_value={'session':dict(old, **changes)})
+                    with self.assertRaisesRegex(ValueError, 'dedicated independent tax Session'):
+                        await county.replace_tax_session(args, 'Session1')
+                    api.return_value.call.assert_awaited_once_with('GET', '/sessions/Session1')
+
+    async def test_reload_retries_same_parcel_after_crawlee_retry_budget(self):
+        from types import SimpleNamespace
+
+        class RpcError(RuntimeError):
+            id = 'BROWSER_UNAVAILABLE'
+
+        error = RpcError('Browser configuration changed. Choose Reload in REL to apply it before continuing automation.')
+        context = SimpleNamespace(request=SimpleNamespace(retry_count=1, no_retry=False))
+        calls = []
+        replacement_count = []
+        async def replace_session():
+            replacement_count.append(True)
+        async def process_parcel(actual_context, force_reload=False):
+            calls.append((actual_context, actual_context.request.retry_count, force_reload))
+
+        await county.recover_parcel_after_reload(
+            context, error, 0, replace_session, process_parcel, lambda *_: None)
+
+        self.assertEqual(replacement_count, [True])
+        self.assertEqual(calls, [(context, 1, True)])
+        self.assertFalse(context.request.no_retry)
+
+    async def test_second_reload_after_replacement_stops_the_parcel(self):
+        from types import SimpleNamespace
+
+        class RpcError(RuntimeError):
+            id = 'BROWSER_UNAVAILABLE'
+
+        error = RpcError('Browser configuration changed. Choose Reload in REL to apply it before continuing automation.')
+        context = SimpleNamespace(request=SimpleNamespace(retry_count=1, no_retry=False))
+        replacement_count = []
+        attempts = []
+        async def replace_session():
+            replacement_count.append(True)
+        async def process_parcel(actual_context, force_reload=False):
+            attempts.append((actual_context, actual_context.request.retry_count, force_reload))
+            raise error
+
+        with self.assertRaisesRegex(RpcError, 'Choose Reload in REL'):
+            await county.recover_parcel_after_reload(
+                context, error, 0, replace_session, process_parcel, lambda *_: None)
+
+        self.assertEqual(replacement_count, [True])
+        self.assertEqual(attempts, [(context, 1, True)])
+        self.assertTrue(context.request.no_retry)

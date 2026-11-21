@@ -57,3 +57,34 @@ class RestartEndpointTests(unittest.TestCase):
             self.assertFalse(dashboard._pid_alive(123))
         with patch.object(dashboard.subprocess,'run',return_value=Mock(stdout='S')):
             self.assertTrue(dashboard._pid_alive(123))
+
+
+class WorkerIdentityTests(unittest.TestCase):
+    def test_reused_pid_or_other_queue_does_not_count_as_this_worker(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory);run={'pid':123}
+            for command in ['/System/Library/ColorSyncXPCAgent',
+                            f'/usr/bin/python /repo/run.py --output {output}-other',
+                            f'/usr/bin/python /repo/crawl_county_taxes.py --output {output}', '']:
+                with self.subTest(command=command),patch.object(dashboard,'process_info',return_value=command):
+                    self.assertFalse(dashboard._worker_alive(run,'zillow',output))
+            with patch.object(dashboard,'process_info',return_value=f'/usr/bin/python /repo/run.py --output {output}'):
+                self.assertTrue(dashboard._worker_alive(run,'zillow',output))
+            with patch.object(dashboard,'process_info',return_value=f'/usr/bin/caffeinate -i python /repo/crawl_county_taxes.py --output {output}'):
+                self.assertTrue(dashboard._worker_alive(run,'tax',output))
+
+    def test_reused_pid_reports_failed_and_keeps_stop_reason(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output=Path(directory);database=output/'zillow.sqlite3'
+            with closing(sqlite3.connect(database)) as db:
+                db.executescript((Path(__file__).parent/'schema.sql').read_text())
+            (output/'active-run.json').write_text(json.dumps({'pid':123,'status':'stopped','exit_code':2,
+                'started_at':'2026-10-23T23:06:31+00:00','stopped_at':'2026-10-23T23:43:00+00:00',
+                'launcher_command':['python','/repo/run.py']}))
+            reason='More than 10 consecutive failures; queue retained'
+            (output/'zillow-progress.json').write_text(json.dumps({'consecutive_failures':11,'stop_reason':reason}))
+            with patch.object(dashboard,'process_info',return_value='/System/Library/ColorSyncXPCAgent'):
+                state=dashboard.restart_progress_data(database)['zillow']
+            self.assertFalse(state['active']);self.assertFalse(state['can_stop'])
+            self.assertTrue(state['can_restart']);self.assertEqual(state['phase'],'failed')
+            self.assertEqual(state['error'],reason)

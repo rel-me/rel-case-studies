@@ -191,5 +191,44 @@ class SessionRecoveryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(manager.state['consecutive_skips'], 1)
 
 
+    async def test_project_replacement_preserves_scope_without_legacy_group(self):
+        state=json.loads(self.path.read_text());state['project_id']='SharedProject';self.path.write_text(json.dumps(state))
+        self.api.sessions['Session9001'].pop('group')
+        self.api.sessions['Session9001']['project_id']='SharedProject'
+        manager=self.manager()
+        self.assertEqual(await manager.replace(),'Session9002')
+        created=self.api.sessions['Session9002']
+        self.assertEqual(created['project_id'],'SharedProject')
+        self.assertEqual(created['profile'],'Test')
+        self.assertNotIn('group',created)
+        self.assertFalse(any('/rotate-session' in path for _,path,_ in self.api.calls))
+
+    def test_requested_project_cannot_override_a_saved_binding(self):
+        state=json.loads(self.path.read_text());state['project_id']='Original';self.path.write_text(json.dumps(state))
+        with self.assertRaisesRegex(ValueError,'different Project'):
+            SessionRecovery(self.path,'Test','http://localhost:17319/v1','test-crawl',api=self.api,project_id='Other')
+
+    async def test_fresh_session_checkpoint_persists_requested_project(self):
+        self.path.unlink()
+        manager=SessionRecovery(self.path,'Test','http://localhost:17319/v1','test-crawl',api=self.api,project_id='SharedProject')
+        session_id=await manager.ensure()
+        self.assertEqual(manager.state['project_id'],'SharedProject')
+        self.assertEqual(json.loads(self.path.read_text())['project_id'],'SharedProject')
+        self.assertEqual(self.api.sessions[session_id]['project_id'],'SharedProject')
+        self.assertNotIn('group',self.api.sessions[session_id])
+
+    async def test_pending_replacement_cannot_cross_a_changed_project_scope(self):
+        for checkpointed_project in [None,'OldProject']:
+            with self.subTest(checkpointed_project=checkpointed_project):
+                state=json.loads(self.path.read_text())
+                state.update(project_id='SharedProject',replacement_pending={
+                    'old_id':'Session9001','options':{},'project_id':checkpointed_project})
+                self.path.write_text(json.dumps(state));before=self.path.read_bytes()
+                manager=self.manager()
+                with self.assertRaisesRegex(RuntimeError,'Checkpointed replacement belongs to a different Project'):
+                    await manager.replace()
+                self.assertEqual(self.path.read_bytes(),before)
+                self.assertEqual(self.api.calls,[])
+
 if __name__ == '__main__':
     unittest.main()
