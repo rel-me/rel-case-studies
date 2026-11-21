@@ -392,7 +392,10 @@ class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
         class RpcError(RuntimeError):
             id = 'BROWSER_UNAVAILABLE'
         self.assertTrue(county.needs_configuration_reload(RpcError(message)))
+        self.assertTrue(county.can_replace_for_configuration_reload(RpcError(message), 0))
+        self.assertFalse(county.can_replace_for_configuration_reload(RpcError(message), 1))
         self.assertFalse(county.needs_configuration_reload(RuntimeError(message)))
+        self.assertFalse(county.can_replace_for_configuration_reload(RuntimeError(message), 0))
         self.assertFalse(county.needs_configuration_reload(RpcError('Browser process disconnected')))
 
     async def test_replacement_preserves_configuration_and_updates_before_retiring(self):

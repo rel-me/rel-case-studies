@@ -66,6 +66,10 @@ def needs_configuration_reload(error):
             and 'browser configuration changed. choose reload in rel' in str(error).casefold())
 
 
+def can_replace_for_configuration_reload(error, consecutive_replacements):
+    return consecutive_replacements == 0 and needs_configuration_reload(error)
+
+
 async def replace_tax_session(args, session_id):
     """Replace only the dedicated, independent tax Session in its saved Project."""
     path = args.session_file
@@ -645,7 +649,8 @@ async def crawl(args, db):
         try:
             await process_parcel(context)
         except Exception as error:
-            if isinstance(error, ConfigurationRecoveryFailed) or (replacements and needs_configuration_reload(error)):
+            if (isinstance(error, ConfigurationRecoveryFailed)
+                    or (needs_configuration_reload(error) and not can_replace_for_configuration_reload(error, replacements))):
                 context.request.no_retry = True
             raise
 
@@ -659,7 +664,7 @@ async def crawl(args, db):
             context.request.no_retry=True
             crawler.stop('County access restriction; checkpoint retained')
             return
-        if needs_configuration_reload(error):
+        if can_replace_for_configuration_reload(error, replacements):
             context.request.user_data['recover_rel_configuration'] = True
         context.request.forefront = True
         await asyncio.sleep(10)
@@ -677,7 +682,7 @@ async def crawl(args, db):
         with db:
             db.execute('UPDATE county_tax_targets SET status=?,error=? WHERE apn=?',(state,str(error),context.request.user_data['apn']))
         reason=('Access restriction; queue retained' if blocked else
-                RELOAD_STOP if needs_configuration_reload(error) or isinstance(error, ConfigurationRecoveryFailed) else
+                RELOAD_STOP if (needs_configuration_reload(error) and not can_replace_for_configuration_reload(error, replacements)) or isinstance(error, ConfigurationRecoveryFailed) else
                 f'More than {limit} consecutive failures; queue retained' if failures>limit else None)
         save_progress(reason)
         if reason: crawler.stop(reason)
