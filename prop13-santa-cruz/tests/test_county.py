@@ -384,3 +384,58 @@ class CountyProjectCheckpointTests(unittest.IsolatedAsyncioTestCase):
                     await county.ensure_session(args)
                 api.assert_not_called()
             self.assertEqual(checkpoint.read_bytes(),before)
+
+
+class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
+    def test_reload_detection_requires_the_specific_rel_error(self):
+        message = 'BROWSER_UNAVAILABLE: Browser configuration changed. Choose Reload in REL to apply it before continuing automation.'
+        class RpcError(RuntimeError):
+            id = 'BROWSER_UNAVAILABLE'
+        self.assertTrue(county.needs_configuration_reload(RpcError(message)))
+        self.assertFalse(county.needs_configuration_reload(RuntimeError(message)))
+        self.assertFalse(county.needs_configuration_reload(RpcError('Browser process disconnected')))
+
+    async def test_replacement_preserves_configuration_and_updates_before_retiring(self):
+        from unittest.mock import AsyncMock, patch
+        from types import SimpleNamespace
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / 'session.json'
+            args = SimpleNamespace(session_file=checkpoint, profile='Datacenter', base_url='http://localhost:17319/v1')
+            checkpoint.write_text(json.dumps({'project_id':'Study','session_id':'Session1',
+                'profile':args.profile,'base_url':args.base_url,'group':'prop13-county-taxes'}))
+            old = dict(id='Session1', name=county.TAX_SESSION_NAME, project_id='Study',
+                       profile='Datacenter', profile_id='profile', proxy_alias='configured',
+                       adblock_enabled=False, image_blocking_mode='none', image_size_limit_kb=100)
+            async def call(method, endpoint, payload=None):
+                if method == 'GET':
+                    return {'session': old}
+                if method == 'POST':
+                    self.assertEqual(payload['project_id'], 'Study')
+                    self.assertEqual(payload['proxy_alias'], 'configured')
+                    self.assertNotIn('group_id', payload)
+                    self.assertNotEqual(payload['name'], old['name'])
+                    return {'session': dict(old, id='Session2', name=payload['name'])}
+                self.assertEqual((method, endpoint), ('DELETE', '/sessions/Session1'))
+                self.assertEqual(json.loads(checkpoint.read_text())['session_id'], 'Session2')
+            with patch.object(county,'ProfileSessionApi') as api:
+                api.return_value.call = AsyncMock(side_effect=call)
+                self.assertEqual(await county.replace_tax_session(args, 'Session1'), 'Session2')
+                self.assertEqual([c.args[0] for c in api.return_value.call.await_args_list], ['GET','POST','DELETE'])
+
+    async def test_other_or_shared_sessions_are_never_replaced(self):
+        from unittest.mock import AsyncMock, patch
+        from types import SimpleNamespace
+        import json
+        with tempfile.TemporaryDirectory() as directory:
+            checkpoint = Path(directory) / 'session.json'
+            args = SimpleNamespace(session_file=checkpoint, profile='Datacenter', base_url='http://localhost:17319/v1')
+            checkpoint.write_text(json.dumps({'project_id':'Study','session_id':'Session1',
+                'profile':args.profile,'base_url':args.base_url,'group':'prop13-county-taxes'}))
+            old = dict(id='Session1', name=county.TAX_SESSION_NAME, project_id='Study', profile='Datacenter')
+            for changes in [dict(name='Personal'), dict(group_id='Group1'), dict(project_id='Other')]:
+                with self.subTest(changes=changes), patch.object(county,'ProfileSessionApi') as api:
+                    api.return_value.call = AsyncMock(return_value={'session':dict(old, **changes)})
+                    with self.assertRaisesRegex(ValueError, 'dedicated independent tax Session'):
+                        await county.replace_tax_session(args, 'Session1')
+                    api.return_value.call.assert_awaited_once_with('GET', '/sessions/Session1')
