@@ -18,3 +18,11 @@
 ## Follow-up delegated prompt to GPT-6 Luna
 
 > Monitor PR #25 at the updated head using GitHub checks, or run the local suite if there are no checks. Review the inline county tax REL recovery and add a focused offline test that the handler retries the same parcel after replacement even after Crawlee's ordinary retry was used, and stops on a repeated reload. Fix failures, push any changes to the current PR branch, and monitor the final head again. Keep live crawler and REL state untouched.
+
+### Delegated follow-ups to GPT-6 Luna
+
+> Live restart reached configuration recovery. REL created replacement Session with identical configuration except it generates a different fingerprint_profile.seed by design, and strict validation rejected it. I will fix that validation in crawler code and add the focused seed assertion to existing replacement test, while preserving the same Project/Profile/proxy and every other fingerprint setting. Please avoid editing that existing test for now, continue your own new offline test, and tell me before committing so we can stage independently. Keep monitoring latest head.
+
+> Seed normalization and existing mock update are in the shared files now. Please run tests and stage/commit/push both of our changes together and monitor the resulting head. I will only perform live checkpoint repair and verification.
+
+> Verify the new documentation-only head of PR #25 and report its GitHub checks. If there are no configured checks, confirm that the code and tests match the last verified head. Keep live state untouched.
