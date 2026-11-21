@@ -6,6 +6,9 @@ and the [public REL tools documentation](https://github.com/rel-me/rel-tools).
 
 Each case study documents its runtime: a crawler launcher or a native REL Action.
 
+For research involving X, read the [responsible collection guide](RESPONSIBLE_X_RESEARCH.md)
+for sampling, REL crawler selection, bounded collection, provenance, and privacy.
+
 > [!WARNING]
 > **READ BEFORE RUNNING: WEBSITE TERMS AND LEGAL COMPLIANCE**
 >
