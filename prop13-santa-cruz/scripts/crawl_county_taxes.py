@@ -26,6 +26,7 @@ from profile_session import ProfileSessionApi, resolve_profile_session
 from urllib.error import HTTPError
 from urllib.parse import urljoin, urlsplit, parse_qs, quote
 from urllib.request import Request as HttpRequest, urlopen
+from uuid import uuid4
 
 SITE = 'https://ttc.co.santa-cruz.ca.us'
 SEARCH = SITE + '/TaxBills/'
@@ -50,6 +51,112 @@ async def ensure_session(args):
     state['base_url'] = args.base_url
     temporary=path.with_suffix('.tmp');temporary.write_text(json.dumps(state,indent=2)+'\n');temporary.replace(path)
     return state['session_id']
+
+
+TAX_SESSION_NAME = 'Santa Cruz county tax crawl'
+RELOAD_STOP = 'REL configuration reload could not be recovered; queue retained'
+
+
+class ConfigurationRecoveryFailed(RuntimeError):
+    pass
+
+
+def needs_configuration_reload(error):
+    return (getattr(error, 'id', None) == 'BROWSER_UNAVAILABLE'
+            and 'browser configuration changed. choose reload in rel' in str(error).casefold())
+
+
+def can_replace_for_configuration_reload(error, consecutive_replacements):
+    return (consecutive_replacements == 0 and needs_configuration_reload(error)
+            and not county_access_restricted(error))
+
+
+def county_error_status(error):
+    status = getattr(error, 'status_code', None)
+    details = getattr(error, 'details', None)
+    return status or (details.get('target_http_status') if isinstance(details, dict) else None)
+
+
+def county_access_restricted(error):
+    return (county_error_status(error) in (401, 403, 429)
+            or re.search(r'captcha|verify.*human|access.denied', str(error), re.I))
+
+
+async def recover_parcel_after_reload(context, error, replacements, replace_session,
+                                      process_parcel, record_error):
+    if not can_replace_for_configuration_reload(error, replacements):
+        if needs_configuration_reload(error) or county_access_restricted(error):
+            context.request.no_retry = True
+        raise error
+
+    record_error(context, error, False)
+    try:
+        await replace_session()
+    except Exception as replacement_error:
+        context.request.no_retry = True
+        raise ConfigurationRecoveryFailed(str(replacement_error)) from replacement_error
+    try:
+        await process_parcel(context, force_reload=True)
+    except Exception as retry_error:
+        if needs_configuration_reload(retry_error) or county_access_restricted(retry_error):
+            context.request.no_retry = True
+        raise
+
+
+def fingerprint_settings(profile):
+    # REL generates a seed for the new Session, including when a Profile is supplied.
+    return {key: value for key, value in profile.items() if key != 'seed'} if isinstance(profile, dict) else profile
+
+
+async def replace_tax_session(args, session_id):
+    """Replace only the dedicated, independent tax Session in its saved Project."""
+    path = args.session_file
+    state = json.loads(path.read_text())
+    project = state.get('project_id')
+    if (not project or state.get('session_id') != session_id
+            or state.get('profile') != args.profile or state.get('group') != 'prop13-county-taxes'
+            or state.get('base_url') != args.base_url
+            or getattr(args, 'project_id', None) not in (None, project)):
+        raise ValueError('Tax Session checkpoint no longer matches the running worker')
+
+    api = ProfileSessionApi(args.base_url)
+    endpoint = '/sessions/' + quote(session_id, safe='')
+    old = (await api.call('GET', endpoint))['session']
+    saved_name = state.get('tax_session_name', TAX_SESSION_NAME)
+    if (old.get('id') != session_id or old.get('name') != saved_name
+            or old.get('project_id') != project or old.get('profile') != args.profile
+            or old.get('group_id')):
+        raise ValueError('REL Session is not the dedicated independent tax Session')
+
+    # Verify the replacement before retiring the original. Preserve its route
+    # and browser settings even if the reusable Profile has since been edited.
+    replacement_name = f'{TAX_SESSION_NAME} {uuid4().hex[:8]}'
+    settings = {key: old[key] for key in (
+        'proxy_keepalive_enabled', 'adblock_enabled', 'image_blocking_mode',
+        'image_size_limit_kb', 'fingerprint_profile',
+    ) if key in old}
+    created = (await api.call('POST', '/sessions', {
+        'project_id': project, 'profile': args.profile, 'name': replacement_name,
+        'proxy_alias': old.get('proxy_alias'), 'lifetime': old.get('lifetime', {'type': 'indefinite'}), **settings,
+    }))['session']
+    new_id = created.get('id')
+    if (not isinstance(new_id, str) or not new_id or new_id == session_id
+            or created.get('project_id') != project or created.get('name') != replacement_name
+            or created.get('profile') != args.profile or created.get('group_id')
+            or created.get('profile_id') != old.get('profile_id')
+            or created.get('proxy_alias') != old.get('proxy_alias')
+            or any(created.get(key) != value for key, value in settings.items() if key != 'fingerprint_profile')
+            or ('fingerprint_profile' in settings
+                and fingerprint_settings(created.get('fingerprint_profile')) != fingerprint_settings(settings['fingerprint_profile']))):
+        raise ValueError('Replacement REL Session did not preserve the tax Session configuration')
+
+    state['session_id'] = new_id
+    state['tax_session_name'] = replacement_name
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(state, indent=2) + '\n')
+    temporary.replace(path)
+    await api.call('DELETE', endpoint)
+    return new_id
 
 
 def validate_detail_url(url):
@@ -403,6 +510,18 @@ async def restore_search_form(page, activate, history_supported=True, force_relo
 
 
 async def crawl(args, db):
+    progress_path=args.output/'county-progress.json'
+    progress=json.loads(progress_path.read_text()) if progress_path.exists() else {}
+    failures=progress.get('consecutive_failures',0)
+    replacements = progress.get('consecutive_session_replacements', 0)
+    limit=getattr(args,'max_consecutive_failures',10)
+    if progress.get('stop_reason') == RELOAD_STOP:
+        print(RELOAD_STOP, flush=True)
+        return 2
+    if failures>limit:
+        print('Consecutive failure limit already reached; explicit continuation required',flush=True)
+        return 2
+
     # Imports stay here so parser tests do not require the browser dependencies.
     from crawlee import ConcurrencySettings, Request
     from crawlee.configuration import Configuration
@@ -423,7 +542,6 @@ async def crawl(args, db):
     queue = await RequestQueue.open(name='county-full-bill-pages-v1', configuration=config, storage_client=storage)
     # BasicCrawler owns the same persistent queue/retries. The awaited REL Page
     # owns serial navigation so Crawlee does not reload SEARCH before each APN.
-    page = None
     crawler = BasicCrawler(configuration=config, use_session_pool=False, retry_on_blocked=False,
         respect_robots_txt_file=False,
         request_manager=queue, storage_client=storage, event_manager=LocalEventManager(),
@@ -431,28 +549,20 @@ async def crawl(args, db):
         max_request_retries=1,
         request_handler_timeout=timedelta(minutes=15),
         concurrency_settings=ConcurrencySettings(max_concurrency=1,desired_concurrency=1,max_tasks_per_minute=args.rate))
-    progress_path=args.output/'county-progress.json'
-    progress=json.loads(progress_path.read_text()) if progress_path.exists() else {}
-    failures=progress.get('consecutive_failures',0)
-    limit=getattr(args,'max_consecutive_failures',10)
     def save_progress(reason=None):
         progress.update(consecutive_failures=failures, failure_limit=limit,
+                        consecutive_session_replacements=replacements,
                         stop_reason=reason, updated_at=datetime.now(timezone.utc).isoformat())
         temporary=progress_path.with_suffix('.tmp')
         temporary.write_text(json.dumps(progress,indent=2)+'\n');temporary.replace(progress_path)
-    if failures>limit:
-        print('Consecutive failure limit already reached; explicit continuation required',flush=True)
-        return 2
-
     def record_error(context, error, terminal):
         apn = context.request.user_data['apn']
         with db:
             db.execute('INSERT INTO county_tax_errors(apn,occurred_at,error,terminal) VALUES(?,?,?,?)',
                        (apn,datetime.now(timezone.utc).isoformat(),str(error),int(terminal)))
 
-    @crawler.router.default_handler
-    async def handle(context):
-        nonlocal failures
+    async def process_parcel(context, force_reload=False):
+        nonlocal failures, replacements
         apn = context.request.user_data['apn']
         with db:
             db.execute("UPDATE county_tax_targets SET status='running',attempts=attempts+1,error=NULL WHERE apn=?",(apn,))
@@ -467,7 +577,7 @@ async def crawl(args, db):
         # The adapter's cached URL/DOM can be stale after a timed-out action.
         # Spend the existing Crawlee retry on one clean GET of the search form,
         # not on waiting for an input on the previous results/detail page.
-        mode=await search_form(force_reload=context.request.retry_count > 0)
+        mode=await search_form(force_reload=force_reload or context.request.retry_count > 0)
         print(json.dumps({'search_form':mode}),flush=True)
         async def reject_challenge():
             from selectolax.parser import HTMLParser
@@ -555,21 +665,38 @@ async def crawl(args, db):
         with db:
             db.execute("UPDATE county_tax_targets SET status='complete',captured_at=?,error=NULL WHERE apn=?",(datetime.now(timezone.utc).isoformat(),apn))
         failures = 0
+        replacements = 0
         save_progress()
         print(json.dumps({'parcel':apn,'bills':len(bills),**summary(db)}),flush=True)
         # Add modest jitter between parcels in addition to the crawl-wide rate cap.
         await asyncio.sleep(random.uniform(3.0,4.0))
 
+    @crawler.router.default_handler
+    async def handle(context):
+        try:
+            await process_parcel(context)
+        except Exception as error:
+            async def replace_session():
+                nonlocal replacements, session, browser, page
+                # Keep REL recovery independent of Crawlee's ordinary parcel retry.
+                replacements += 1
+                save_progress()
+                print(json.dumps({'recovery': 'Replacing tax Session after REL requested a reload'}), flush=True)
+                try:
+                    session = await replace_tax_session(args, session)
+                    await browser.close()
+                    browser = await playwright.chromium.launch(session_id=session, rel_base_url=args.base_url)
+                    page = await browser.new_page()
+                except Exception as replacement_error:
+                    raise ConfigurationRecoveryFailed(str(replacement_error)) from replacement_error
+                print(json.dumps({'session': session, 'recovery': 'Retrying parcel with replacement tax Session'}), flush=True)
+
+            await recover_parcel_after_reload(context, error, replacements, replace_session,
+                                              process_parcel, record_error)
+
     @crawler.error_handler
     async def retry(context,error):
         record_error(context,error,False)
-        details=getattr(error,'details',None)
-        status=getattr(error,'status_code',None)
-        if isinstance(details,dict): status=status or details.get('target_http_status')
-        if status in (401,403,429) or re.search(r'captcha|verify.*human|access.denied',str(error),re.I):
-            context.request.no_retry=True
-            crawler.stop('County access restriction; checkpoint retained')
-            return
         context.request.forefront = True
         await asyncio.sleep(10)
 
@@ -578,14 +705,13 @@ async def crawl(args, db):
         nonlocal failures
         record_error(context,error,True)
         failures += 1
-        status = getattr(error,'status_code',None)
-        details = getattr(error,'details',None)
-        if isinstance(details,dict): status = status or details.get('target_http_status')
-        blocked = status in (401,403,429) or re.search(r'captcha|verify.*human|access.denied',str(error),re.I)
+        status = county_error_status(error)
+        blocked = county_access_restricted(error)
         state = 'blocked' if blocked else 'skipped' if status==404 else 'failed'
         with db:
             db.execute('UPDATE county_tax_targets SET status=?,error=? WHERE apn=?',(state,str(error),context.request.user_data['apn']))
         reason=('Access restriction; queue retained' if blocked else
+                RELOAD_STOP if needs_configuration_reload(error) or isinstance(error, ConfigurationRecoveryFailed) else
                 f'More than {limit} consecutive failures; queue retained' if failures>limit else None)
         save_progress(reason)
         if reason: crawler.stop(reason)
