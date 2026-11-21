@@ -248,3 +248,22 @@ submitted search via Back after a timeout. Ordinary successful requests retain
 the existing form/history reuse. The retry budget stays unchanged: if the fresh
 form still fails, normal failure accounting applies. Access denials still stop
 the crawl, and saved terminal failures or safety stops are not cleared/retried.
+
+When REL reports that browser configuration changed and requires a reload, the
+tax worker can replace its dedicated Session once and retry the parcel through
+the same Project, Profile, and proxy route. A successful parcel resets the
+recovery budget. This recovery is available even if Crawlee already used its
+ordinary parcel retry. The worker saves the budget across restarts and stops if
+replacement fails or REL requests another configuration reload before a parcel
+completes.
+
+### Shared REL Project
+
+Both property crawlers can use one explicit REL Project while retaining separate
+Sessions and Profiles. Pass `--project-id PROJECT_ID` with `--profile Zillow`
+for Zillow or `--profile Datacenter` for tax. Session checkpoints retain that
+Project binding, and saved restart commands preserve the argument. Missing
+Sessions are created in the bound Project; conflicting saved Project/Profile
+ownership fails instead of silently selecting another Session. Do not share a
+Session between the two workers. Existing Sessions and private queues/captures
+are not deleted when an operator explicitly rebinds the crawler checkpoints.

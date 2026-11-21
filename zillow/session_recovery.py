@@ -92,7 +92,7 @@ class RotationRules:
 
 
 class SessionRecovery:
-    def __init__(self, state_file, profile, base_url, group, rules=None, api=None):
+    def __init__(self, state_file, profile, base_url, group, rules=None, api=None, project_id=None):
         self.state_file = Path(state_file)
         self.profile, self.base_url, self.group = profile, base_url, group
         self.rules = rules or RotationRules()
@@ -101,6 +101,10 @@ class SessionRecovery:
         self.state = json.loads(self.state_file.read_text()) if self.state_file.exists() else {}
         if self.state and (self.state['profile'] != profile or self.state['base_url'] != base_url):
             raise ValueError('Saved session belongs to a different Profile or REL endpoint')
+        if project_id:
+            if self.state.get('project_id') and self.state['project_id'] != project_id:
+                raise ValueError('Saved session belongs to a different Project')
+            self.state['project_id'] = project_id
         self.state.update(profile=profile, base_url=base_url)
 
     def save(self):
@@ -163,16 +167,21 @@ class SessionRecovery:
             if not old_id:
                 raise RuntimeError('No managed session to replace')
             old = (await self.api.call('GET', '/sessions/' + quote(old_id, safe='')))['session']
-            if old.get('group') != self.group or old.get('profile') != self.profile:
+            project = self.state.get('project_id')
+            same_owner = old.get('project_id') == project if project else old.get('group') == self.group
+            if not same_owner or old.get('profile') != self.profile:
                 raise RuntimeError('Refusing to replace a session outside the crawler group/Profile')
             options = {key: old[key] for key in ('proxy_alias', 'adblock_enabled',
                        'image_blocking_mode', 'image_size_limit_kb') if key in old}
             self.state.update(session_id=None, replacement_pending={
                 'old_id': old_id, 'options': options, 'proxy_checked': False,
                 'old_deleted': False, 'proxy_rotated': False,
-                'replacement_name': self.group + '-' + uuid.uuid4().hex[:12]})
+                'replacement_name': self.group + '-' + uuid.uuid4().hex[:12],
+                'project_id': project})
             self.save()
         pending = self.state['replacement_pending']
+        if pending.get('project_id') != self.state.get('project_id'):
+            raise RuntimeError('Checkpointed replacement belongs to a different Project; explicit review required')
         alias = pending['options'].get('proxy_alias')
         if not pending['proxy_checked']:
             rotate = False
@@ -205,13 +214,19 @@ class SessionRecovery:
         sessions = (await self.api.call('GET', '/sessions'))['sessions']
         found = next((s for s in sessions if s.get('name') == pending['replacement_name']), None)
         if found:
-            if found.get('group') != self.group or found.get('profile') != self.profile:
+            same_owner = (found.get('project_id') == pending['project_id'] if pending.get('project_id')
+                          else found.get('group') == self.group)
+            if not same_owner or found.get('profile') != self.profile:
                 raise RuntimeError('Replacement session name belongs to another owner')
             new_id = found['id']
         else:
+            scope = {'project_id':pending['project_id']} if pending.get('project_id') else {'group':self.group}
             data = await self.api.call('POST', '/sessions', {
                 'name': pending['replacement_name'], 'profile': self.profile,
-                'group': self.group, **pending['options'], 'lifetime': {'type': 'indefinite'}})
+                **scope, **pending['options'], 'lifetime': {'type': 'indefinite'}})
+            if (pending.get('project_id') and (data['session'].get('project_id') != pending['project_id']
+                    or data['session'].get('profile') != self.profile)):
+                raise RuntimeError('Replacement session belongs to another Profile or Project')
             new_id = data['session']['id']
         event = {'at': datetime.now(timezone.utc).isoformat(), 'old_id': pending['old_id'],
                  'session_id': new_id, 'proxy_alias': alias,
