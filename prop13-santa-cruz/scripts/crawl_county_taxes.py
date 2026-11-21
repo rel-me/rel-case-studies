@@ -82,6 +82,32 @@ def county_access_restricted(error):
             or re.search(r'captcha|verify.*human|access.denied', str(error), re.I))
 
 
+async def recover_parcel_after_reload(context, error, replacements, replace_session,
+                                      process_parcel, record_error):
+    if not can_replace_for_configuration_reload(error, replacements):
+        if needs_configuration_reload(error) or county_access_restricted(error):
+            context.request.no_retry = True
+        raise error
+
+    record_error(context, error, False)
+    try:
+        await replace_session()
+    except Exception as replacement_error:
+        context.request.no_retry = True
+        raise ConfigurationRecoveryFailed(str(replacement_error)) from replacement_error
+    try:
+        await process_parcel(context, force_reload=True)
+    except Exception as retry_error:
+        if needs_configuration_reload(retry_error) or county_access_restricted(retry_error):
+            context.request.no_retry = True
+        raise
+
+
+def fingerprint_settings(profile):
+    # REL generates a seed for the new Session, including when a Profile is supplied.
+    return {key: value for key, value in profile.items() if key != 'seed'} if isinstance(profile, dict) else profile
+
+
 async def replace_tax_session(args, session_id):
     """Replace only the dedicated, independent tax Session in its saved Project."""
     path = args.session_file
@@ -119,7 +145,9 @@ async def replace_tax_session(args, session_id):
             or created.get('profile') != args.profile or created.get('group_id')
             or created.get('profile_id') != old.get('profile_id')
             or created.get('proxy_alias') != old.get('proxy_alias')
-            or any(created.get(key) != value for key, value in settings.items())):
+            or any(created.get(key) != value for key, value in settings.items() if key != 'fingerprint_profile')
+            or ('fingerprint_profile' in settings
+                and fingerprint_settings(created.get('fingerprint_profile')) != fingerprint_settings(settings['fingerprint_profile']))):
         raise ValueError('Replacement REL Session did not preserve the tax Session configuration')
 
     state['session_id'] = new_id
@@ -645,34 +673,26 @@ async def crawl(args, db):
 
     @crawler.router.default_handler
     async def handle(context):
-        nonlocal replacements, session, browser, page
         try:
             await process_parcel(context)
         except Exception as error:
-            if not can_replace_for_configuration_reload(error, replacements):
-                if needs_configuration_reload(error) or county_access_restricted(error):
-                    context.request.no_retry = True
-                raise
-            record_error(context, error, False)
+            async def replace_session():
+                nonlocal replacements, session, browser, page
+                # Keep REL recovery independent of Crawlee's ordinary parcel retry.
+                replacements += 1
+                save_progress()
+                print(json.dumps({'recovery': 'Replacing tax Session after REL requested a reload'}), flush=True)
+                try:
+                    session = await replace_tax_session(args, session)
+                    await browser.close()
+                    browser = await playwright.chromium.launch(session_id=session, rel_base_url=args.base_url)
+                    page = await browser.new_page()
+                except Exception as replacement_error:
+                    raise ConfigurationRecoveryFailed(str(replacement_error)) from replacement_error
+                print(json.dumps({'session': session, 'recovery': 'Retrying parcel with replacement tax Session'}), flush=True)
 
-        # Keep REL recovery independent of Crawlee's ordinary parcel retry.
-        replacements += 1
-        save_progress()
-        print(json.dumps({'recovery': 'Replacing tax Session after REL requested a reload'}), flush=True)
-        try:
-            session = await replace_tax_session(args, session)
-            await browser.close()
-            browser = await playwright.chromium.launch(session_id=session, rel_base_url=args.base_url)
-            page = await browser.new_page()
-        except Exception as error:
-            context.request.no_retry = True
-            raise ConfigurationRecoveryFailed(str(error)) from error
-        print(json.dumps({'session': session, 'recovery': 'Retrying parcel with replacement tax Session'}), flush=True)
-        try:
-            await process_parcel(context, force_reload=True)
-        except Exception:
-            context.request.no_retry = True
-            raise
+            await recover_parcel_after_reload(context, error, replacements, replace_session,
+                                              process_parcel, record_error)
 
     @crawler.error_handler
     async def retry(context,error):

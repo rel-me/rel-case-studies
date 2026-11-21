@@ -412,7 +412,8 @@ class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
                 'profile':args.profile,'base_url':args.base_url,'group':'prop13-county-taxes'}))
             old = dict(id='Session1', name=county.TAX_SESSION_NAME, project_id='Study',
                        profile='Datacenter', profile_id='profile', proxy_alias='configured',
-                       adblock_enabled=False, image_blocking_mode='none', image_size_limit_kb=100)
+                       adblock_enabled=False, image_blocking_mode='none', image_size_limit_kb=100,
+                       fingerprint_profile={'seed':'old','locale':'en-US'})
             async def call(method, endpoint, payload=None):
                 if method == 'GET':
                     return {'session': old}
@@ -421,7 +422,8 @@ class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(payload['proxy_alias'], 'configured')
                     self.assertNotIn('group_id', payload)
                     self.assertNotEqual(payload['name'], old['name'])
-                    return {'session': dict(old, id='Session2', name=payload['name'])}
+                    return {'session': dict(old, id='Session2', name=payload['name'],
+                                            fingerprint_profile={'seed':'generated','locale':'en-US'})}
                 self.assertEqual((method, endpoint), ('DELETE', '/sessions/Session1'))
                 self.assertEqual(json.loads(checkpoint.read_text())['session_id'], 'Session2')
             with patch.object(county,'ProfileSessionApi') as api:
@@ -445,3 +447,49 @@ class ConfigurationReloadTests(unittest.IsolatedAsyncioTestCase):
                     with self.assertRaisesRegex(ValueError, 'dedicated independent tax Session'):
                         await county.replace_tax_session(args, 'Session1')
                     api.return_value.call.assert_awaited_once_with('GET', '/sessions/Session1')
+
+    async def test_reload_retries_same_parcel_after_crawlee_retry_budget(self):
+        from types import SimpleNamespace
+
+        class RpcError(RuntimeError):
+            id = 'BROWSER_UNAVAILABLE'
+
+        error = RpcError('Browser configuration changed. Choose Reload in REL to apply it before continuing automation.')
+        context = SimpleNamespace(request=SimpleNamespace(retry_count=1, no_retry=False))
+        calls = []
+        replacement_count = []
+        async def replace_session():
+            replacement_count.append(True)
+        async def process_parcel(actual_context, force_reload=False):
+            calls.append((actual_context, actual_context.request.retry_count, force_reload))
+
+        await county.recover_parcel_after_reload(
+            context, error, 0, replace_session, process_parcel, lambda *_: None)
+
+        self.assertEqual(replacement_count, [True])
+        self.assertEqual(calls, [(context, 1, True)])
+        self.assertFalse(context.request.no_retry)
+
+    async def test_second_reload_after_replacement_stops_the_parcel(self):
+        from types import SimpleNamespace
+
+        class RpcError(RuntimeError):
+            id = 'BROWSER_UNAVAILABLE'
+
+        error = RpcError('Browser configuration changed. Choose Reload in REL to apply it before continuing automation.')
+        context = SimpleNamespace(request=SimpleNamespace(retry_count=1, no_retry=False))
+        replacement_count = []
+        attempts = []
+        async def replace_session():
+            replacement_count.append(True)
+        async def process_parcel(actual_context, force_reload=False):
+            attempts.append((actual_context, actual_context.request.retry_count, force_reload))
+            raise error
+
+        with self.assertRaisesRegex(RpcError, 'Choose Reload in REL'):
+            await county.recover_parcel_after_reload(
+                context, error, 0, replace_session, process_parcel, lambda *_: None)
+
+        self.assertEqual(replacement_count, [True])
+        self.assertEqual(attempts, [(context, 1, True)])
+        self.assertTrue(context.request.no_retry)
