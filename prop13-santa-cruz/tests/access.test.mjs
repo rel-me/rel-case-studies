@@ -80,6 +80,27 @@ test('single-record details, no-store responses and request throttling are enfor
   assert.equal((await worker.fetch(new Request(BASE+'/api/record?id=bad'),allowed)).status,400);
 });
 
+test('every table column sorts in both directions with missing values last',async()=>{
+  const sortable=createApi({metadata:{},records:[
+    {record_id:'a',address:'10 Main',estimated_value:200,assessed_value:150},
+    {record_id:'b',address:'2 Main',estimated_value:100,assessed_value:25},
+    {record_id:'c',address:'30 Main',estimated_value:null,assessed_value:100},
+    {record_id:'d',address:'40 Main',estimated_value:300,assessed_value:null}
+  ]});
+  const expected={
+    address:['bacd','dcab'],estimate:['badc','dabc'],assessment:['bcad','acbd'],
+    'assessment-gap':['abcd','bacd'],'assessment-percent-gap':['abcd','bacd']
+  };
+  for(const [sort,[asc,desc]] of Object.entries(expected)){
+    for(const [direction,ids] of [['asc',asc],['desc',desc]]){
+      const page=sortable('/api/records',new URLSearchParams({sort,direction}));
+      assert.equal(page.records.map(record=>record.record_id).join(''),ids,sort+' '+direction);
+    }
+  }
+  const invalid=await worker.fetch(new Request(BASE+'/api/records?direction=sideways'),allowed);
+  assert.equal(invalid.status,400);
+});
+
 
 test('property browsing exposes only the two requested values',()=>{
   const records=[

@@ -15,7 +15,7 @@ export function assessedDifferencePercent(record) {
   return difference == null ? null : difference / record.estimated_value;
 }
 
-export function selectRecords(records, mode = 'all', query = '', type = '', sort = 'gap', locationFilter = '') {
+export function selectRecords(records, mode = 'all', query = '', type = '', sort = 'gap', locationFilter = '', direction = '') {
   if (!['all', 'assessment'].includes(mode)) throw new Error('Invalid comparison view');
   const q = query.trim().toLowerCase();
   const rows = records.filter(r => (r.assessed_value > 0 || r.estimated_value > 0)
@@ -25,20 +25,22 @@ export function selectRecords(records, mode = 'all', query = '', type = '', sort
   const order = sort.endsWith('-rate') ? 'rate'
     : sort.endsWith('-percent-gap') ? 'percent-gap'
     : sort.endsWith('-gap') ? 'gap' : sort;
+  const value = new Map([
+    ['rate', assessedRatio],
+    ['gap', assessedDifference],
+    ['percent-gap', assessedDifferencePercent],
+    ['estimate', r => r.estimated_value > 0 ? r.estimated_value : null],
+    ['assessment', r => r.assessed_value > 0 ? r.assessed_value : null],
+    ['address', r => r.address || null]
+  ]).get(order);
+  if(!value)throw new Error('Invalid sort order');
+  const ascending = direction ? direction === 'asc' : order === 'rate' || order === 'address';
   return rows.sort((a,b) => {
-    const av = order === 'rate' ? assessedRatio(a)
-      : order === 'gap' ? assessedDifference(a)
-      : order === 'percent-gap' ? assessedDifferencePercent(a) : null;
-    const bv = order === 'rate' ? assessedRatio(b)
-      : order === 'gap' ? assessedDifference(b)
-      : order === 'percent-gap' ? assessedDifferencePercent(b) : null;
-    if(order==='rate'||order==='gap'||order==='percent-gap') {
-      if(av==null||bv==null)return av==null?(bv==null?0:1):-1;
-      return (order==='rate'?av-bv:bv-av)||a.record_id.localeCompare(b.record_id);
-    }
-    if(order==='estimate')return (b.estimated_value||0)-(a.estimated_value||0)||a.record_id.localeCompare(b.record_id);
-    if(order==='address')return (a.address||'').localeCompare(b.address||'',undefined,{numeric:true})||a.record_id.localeCompare(b.record_id);
-    throw new Error('Invalid sort order');
+    const av=value(a),bv=value(b);
+    if(av==null&&bv!=null)return 1;
+    if(bv==null&&av!=null)return -1;
+    const comparison=av==null?0:order==='address'?av.localeCompare(bv,undefined,{numeric:true}):av-bv;
+    return (ascending?comparison:-comparison)||a.record_id.localeCompare(b.record_id);
   });
 }
 
