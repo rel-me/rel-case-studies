@@ -35,10 +35,11 @@ test('public assets exclude provider branding, source identifiers and raw captur
 test('public comparison displays both source values and sortable differences',()=>{
   const html=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
   const app=fs.readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
-  assert.match(html,/<th[^>]*>Third-party estimate<\/th>/);
-  assert.match(html,/<th[^>]*>Assessed value for tax purposes<\/th>/);
-  assert.match(html,/<th[^>]*>Value difference/);
-  assert.match(html,/<th[^>]*>Percentage difference/);
+  for(const [field,label] of [['address','Rank / Property'],['estimate','Third-party estimate'],
+    ['assessment','Assessed value for tax purposes'],['assessment-gap','Value difference'],
+    ['assessment-percent-gap','Percentage difference']]){
+    assert.ok(html.includes(`<button type="button" data-sort="${field}">${label}`));
+  }
   assert.match(app,/assessment-gap/);
   assert.match(app,/assessment-percent-gap/);
   assert.match(app,/estimate minus assessed/);

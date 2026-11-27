@@ -18,3 +18,15 @@
 #area-filters button[aria-pressed=true]{border-color:#263f53;background:#263f53;color:#fff}
 #area-filters button:hover{box-shadow:0 0 0 1px #263f53}
 .area-filter .caption{margin:7px 0 0}
+
+.property-actions{display:flex;align-items:center;flex-wrap:wrap;gap:4px 10px;margin-top:4px;font-size:11px}
+.property-actions button,.property-actions .parcel-link{font-size:11px}
+.property-actions button{text-decoration:underline;text-underline-offset:3px}
+.address-link{font-weight:600}
+.focused-pin{background:#263f53;box-shadow:0 0 0 3px #263f5380}
+.map-record .parcel-link{display:block;margin-top:8px}
+
+th button[data-sort]{border:0;background:none;padding:0;font:inherit;text-align:inherit;white-space:inherit;color:inherit}
+th button[data-sort]:hover{text-decoration:underline;text-underline-offset:3px}
+.sort-arrow{display:inline-block;min-width:1em;color:#526777;font-size:13px}
+th[aria-sort] .sort-arrow{color:#263f53}

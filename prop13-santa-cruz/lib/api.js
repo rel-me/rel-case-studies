@@ -9,19 +9,20 @@ const integer=(value,min,max,name)=>{
 };
 function filters(params){
   const mode=params.get('view')||'all', location=params.get('location')||'', sort=params.get('sort')||'gap';
-  if(!['all','assessment'].includes(mode)||!['','city','outside','unknown'].includes(location)||!['gap','rate','estimate','address','assessment-gap','assessment-rate','assessment-percent-gap','percent-gap'].includes(sort))throw new Error('Invalid filter');
+  const direction=params.get('direction')||'';
+  if(!['all','assessment'].includes(mode)||!['','city','outside','unknown'].includes(location)||!['gap','rate','estimate','assessment','address','assessment-gap','assessment-rate','assessment-percent-gap','percent-gap'].includes(sort)||!['','asc','desc'].includes(direction))throw new Error('Invalid filter');
   const q=params.get('q')||'',type=params.get('type')||'';
   if(q.length>100||type.length>60)throw new Error('Filter too long');
   const requested=params.get('areas');
   const areas=requested===null?null:new Set(requested===''?[]:requested.split(','));
   if(areas && [...areas].some(id=>!areaIds.has(id)))throw new Error('Invalid neighborhood');
-  return {mode,q,type,sort,location,areas};
+  return {mode,q,type,sort,direction,location,areas};
 }
 function bounds(rows){
   if(!rows.length)return null;
   return [[Math.min(...rows.map(r=>r.latitude)),Math.min(...rows.map(r=>r.longitude))],[Math.max(...rows.map(r=>r.latitude)),Math.max(...rows.map(r=>r.longitude))]];
 }
-const PUBLIC_FIELDS=['record_id','address','city','postal_code','in_santa_cruz_city','municipality','home_type','estimated_value','assessed_value','latitude','longitude'];
+const PUBLIC_FIELDS=['record_id','address','parcel_number','city','postal_code','in_santa_cruz_city','municipality','home_type','estimated_value','assessed_value','latitude','longitude'];
 function publicRecord(record){return Object.fromEntries(PUBLIC_FIELDS.filter(key=>Object.hasOwn(record,key)).map(key=>[key,record[key]]));}
 export function createApi(snapshot){
   const records=snapshot.records, byId=new Map(records.map(r=>[r.record_id,r]));
@@ -36,7 +37,7 @@ export function createApi(snapshot){
     }
     const f=filters(params);
     const candidates=f.areas===null?records:records.filter(record=>f.areas.has(areaByRecord.get(record)));
-    const selected=selectRecords(candidates,f.mode,f.q,f.type,f.sort,f.location),located=selected.filter(hasLocation);
+    const selected=selectRecords(candidates,f.mode,f.q,f.type,f.sort,f.location,f.direction),located=selected.filter(hasLocation);
     if(path==='/api/records'){
       const limit=integer(params.get('limit')||String(PAGE_LIMIT),1,PAGE_LIMIT,'page size');
       const page=Math.min(integer(params.get('page')||'1',1,10000,'page'),Math.max(1,Math.ceil(selected.length/limit)));

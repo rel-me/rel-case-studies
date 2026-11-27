@@ -14,8 +14,10 @@ source years depend on the most recent local export. Unknown assessment years
 stay unknown. Bill and payment data remain private.
 
 A sanitized server-side snapshot supports the public paginated API; it is not a static download. Raw SQLite databases, page captures,
-browser state, source-specific identifiers and the local crawl dashboard are
+browser state, estimate-provider identifiers and the local crawl dashboard are
 excluded. The dashboard remains bound to loopback on port 8787.
+An unambiguous county parcel number links to the County Tax Collector lookup.
+Enter that number on the county page to find the parcel.
 
 Regenerate the export from a local capture database:
 
@@ -199,8 +201,9 @@ filters. Map mode is linkable with `layout=map` alongside the existing `view`
 comparison parameter. The map uses locally served Leaflet 1.9.4 and
 Leaflet.markercluster 1.5.3 with OpenStreetMap raster tiles and visible attribution.
 Tiles load only in Map mode for the visible viewport, with normal browser caching.
-No address searches are sent to a geocoding service. Vendor licenses are served
-alongside the library files in `public/vendor`.
+Click an address to open its recorded point on the study map. For an address
+without coordinates, the link opens a search in OpenStreetMap. Vendor licenses
+are served alongside the library files in `public/vendor`.
 
 The exporter includes validated latitude/longitude pairs and coordinate provenance
 from existing property records, with a county-area sanity check and recorded city parcel bounding-box centers as a fallback for missing or out-of-area coordinates. The map shows approximate points, not parcel

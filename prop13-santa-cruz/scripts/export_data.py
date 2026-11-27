@@ -15,7 +15,7 @@ import re
 
 
 PUBLIC_RECORD_FIELDS = (
-    'record_id', 'address', 'city', 'postal_code', 'in_santa_cruz_city', 'municipality',
+    'record_id', 'address', 'parcel_number', 'city', 'postal_code', 'in_santa_cruz_city', 'municipality',
     'home_type', 'bedrooms', 'living_area', 'estimated_value', 'estimate_captured_at',
     'assessed_value', 'assessment_year', 'latitude', 'longitude', 'coordinate_source',
     'assessment_source',
@@ -24,6 +24,10 @@ PUBLIC_RECORD_FIELDS = (
 
 def positive(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value) and value > 0
+
+
+def parcel_number(value):
+    return value if isinstance(value, str) and re.fullmatch(r'[0-9]{8}', value) else None
 
 
 def address_key(address):
@@ -112,13 +116,15 @@ def export(database, destination, county_inventory=None, county_taxes=None, supp
         if record['latitude'] is None and len(parcel_locations.get(row['zpid'],{}))==1:
             record.update(next(iter(parcel_locations[row['zpid']].values())))
         matching=boundaries.get(row['zpid'],[])
+        matched_parcels={apn for apn,_ in matching}
+        record['parcel_number']=parcel_number(next(iter(matched_parcels))) if len(matched_parcels)==1 else None
         flags={(county[a]['municipality']=='City of Santa Cruz' if county[a]['municipality'] else None) if a in county else flag for a,flag in matching}
         record['in_santa_cruz_city']=flags.pop() if len(flags)==1 else None
         municipalities={county[a]['municipality'] for a,_ in matching if a in county}
         record['municipality']=next(iter(municipalities)) if len(municipalities)==1 else 'City of Santa Cruz' if record['in_santa_cruz_city'] is True else None
         record['assessment_source']='Third-party property website' if assessment is not None else None
         # Do not attribute one parcel's bill to a multi-parcel property.
-        if len({apn for apn,_ in matching})==1:
+        if len(matched_parcels)==1:
             for apn,_ in matching: by_apn.setdefault(apn,[]).append(record)
         records.append(record)
     county_records_by_apn={}
@@ -152,6 +158,7 @@ def export(database, destination, county_inventory=None, county_taxes=None, supp
                 if record_id in existing_ids: continue
                 record={
                     'record_id':record_id,'address':parcel.get('address') or home.get('address'),
+                    'parcel_number':parcel_number(apn),
                     'city':parcel.get('postal_city') or home.get('city'),
                     'postal_code':parcel.get('postal_code') or home.get('postal_code'),
                     'in_santa_cruz_city':(bool(parcel['in_santa_cruz_city']) if parcel.get('in_santa_cruz_city') is not None else None),
@@ -179,6 +186,7 @@ def export(database, destination, county_inventory=None, county_taxes=None, supp
                 geography=county.get(apn,{})
                 record=dict.fromkeys(PUBLIC_RECORD_FIELDS)
                 record.update(record_id=hashlib.sha256(('county-parcel:'+apn).encode()).hexdigest()[:14],address=target['address'],city=geography.get('postal_city'),postal_code=geography.get('postal_code'),in_santa_cruz_city=(geography['municipality']=='City of Santa Cruz' if geography['municipality'] else None) if geography else None,municipality=geography.get('municipality'))
+                record['parcel_number']=parcel_number(apn)
                 records.append(record);matches=[record]
             for record in matches:
                 if assessment is not None: record.update(assessed_value=assessment,assessment_year=bill['fiscal_start'],assessment_source='Santa Cruz County Tax Collector')

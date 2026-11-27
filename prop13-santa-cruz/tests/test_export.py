@@ -67,6 +67,7 @@ class CountyExportTests(unittest.TestCase):
             with redirect_stdout(io.StringIO()): module.export(source,destination,county_taxes=source)
             data=json.loads((destination/'data.json').read_text());record=data['records'][0]
             self.assertEqual(record['address'],'1215 DOUGMAR DR')
+            self.assertEqual(record['parcel_number'],'02625202')
             self.assertIsNone(record['estimated_value'])
             self.assertEqual(record['assessed_value'],700000)
             self.assertEqual(record['assessment_source'],'Santa Cruz County Tax Collector')
@@ -124,6 +125,9 @@ class CountyExportTests(unittest.TestCase):
             self.assertEqual(record['assessed_value'],700000)
             self.assertEqual(record['assessment_source'],'Santa Cruz County Tax Collector')
             self.assertEqual(record['latitude'],36.97)
+            self.assertEqual(record['parcel_number'],'02625202')
+            city_record=next(r for r in data['records'] if r['address']=='1 City St')
+            self.assertEqual(city_record['parcel_number'],'00114135')
             self.assertFalse({'apn','zpid','owner','source_url'} & record.keys())
             self.assertFalse({'annual_tax','annual_paid','fully_paid','installments','county_installments','fiscal_year','payment_status'} & record.keys())
             self.assertEqual(data['metadata']['with_estimate'],2);self.assertEqual(len(data['records']),2)
