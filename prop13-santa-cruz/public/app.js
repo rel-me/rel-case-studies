@@ -1,6 +1,10 @@
 const BASE = '/case-studies/prop13-santa-cruz';
 const COUNTY_TAX_LOOKUP = 'https://ttc.co.santa-cruz.ca.us/TaxBills/';
 const PAGE_SIZE = 25;
+const SORT_LABELS = {
+  address:'Address', estimate:'Third-party estimate', assessment:'Assessed value',
+  'assessment-gap':'Value difference', 'assessment-percent-gap':'Percentage difference'
+};
 const number = new Intl.NumberFormat('en-US');
 const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 const money = v => v == null ? 'Not available' : currency.format(v);
@@ -21,7 +25,8 @@ function fitMap() {
   if(propertyMap && pageInfo.bounds)propertyMap.fitBounds(pageInfo.bounds,{padding:[35,35],maxZoom:17,animate:false});
 }
 function filterParams(){
-  return new URLSearchParams({view:'all',location:$('location').value,q:$('search').value,type:$('home-type').value,sort:$('sort').value,areas:areaSelection()});
+  const [sort,direction]=($('sort').value||'assessment-gap:desc').split(':');
+  return new URLSearchParams({view:'all',location:$('location').value,q:$('search').value,type:$('home-type').value,sort,direction,areas:areaSelection()});
 }
 function areaSelection(){
   return data.areas.filter(area=>selectedAreas.has(area.id)).map(area=>area.id).join(',');
@@ -170,8 +175,9 @@ function saveFilters() {
   const u=new URL(location.href);u.search='';
   if(layout==='map')u.searchParams.set('layout','map');
   if(focusedProperty)u.searchParams.set('property',focusedProperty.record_id);
-  for(const [key,value] of [['location',$('location').value],['q',$('search').value],['type',$('home-type').value],['sort',$('sort').value]])if(value && value!=='gap')u.searchParams.set(key,value);
-  u.searchParams.set('areas',areaSelection());
+  const filters=filterParams();
+  for(const key of ['location','q','type','sort','direction'])if(filters.get(key))u.searchParams.set(key,filters.get(key));
+  u.searchParams.set('areas',filters.get('areas'));
   history.replaceState(null,'',u);
 }
 
@@ -203,14 +209,45 @@ async function renderRows() {
   saveFilters();if(layout==='map')renderMap();
 }
 
-async function configureRecords(initialSort='assessment-gap') {
+function updateSortHeaders(){
+  const [sort,direction]=$('sort').value.split(':');
+  for(const button of document.querySelectorAll('th button[data-sort]')){
+    const active=button.dataset.sort===sort,header=button.closest('th');
+    if(active)header.setAttribute('aria-sort',direction==='asc'?'ascending':'descending');
+    else header.removeAttribute('aria-sort');
+    button.querySelector('.sort-arrow').textContent=active?(direction==='asc'?'↑':'↓'):'↕';
+  }
+}
+
+function applySort(){
+  updateSortHeaders();clearMapFocus();page=1;renderRows();
+}
+
+async function configureRecords(initialSort='assessment-gap',initialDirection) {
   page=1;
   $('mode-note').textContent='Compare each property’s third-party estimate with its county assessed value for tax purposes.';
   $('table-caption').textContent='Third-party estimates and assessed values for tax purposes';
   $('sort').replaceChildren();
-  const options=[['assessment-gap','Largest value difference'],['assessment-percent-gap','Largest percentage difference'],['estimate','Highest third-party estimate'],['address','Address A–Z']];
-  for(const [value,text] of options){const option=element('option',text);option.value=value;$('sort').append(option);}
-  $('sort').value=options.some(([value])=>value===initialSort)?initialSort:'assessment-gap';await renderRows();
+  for(const [field,label] of Object.entries(SORT_LABELS)){
+    const directions=field==='address'?[['asc','A–Z'],['desc','Z–A']]:[['desc','high to low'],['asc','low to high']];
+    for(const [direction,order] of directions){
+      const option=element('option',label+' · '+order);
+      option.value=field+':'+direction;$('sort').append(option);
+    }
+  }
+  const sort=Object.hasOwn(SORT_LABELS,initialSort)?initialSort:'assessment-gap';
+  const direction=['asc','desc'].includes(initialDirection)?initialDirection:sort==='address'?'asc':'desc';
+  $('sort').value=sort+':'+direction;
+  for(const button of document.querySelectorAll('th button[data-sort]')){
+    button.addEventListener('click',()=>{
+      const field=button.dataset.sort,[active,order]=$('sort').value.split(':');
+      const next=field===active?(order==='asc'?'desc':'asc'):field==='address'?'asc':'desc';
+      $('sort').value=field+':'+next;
+      applySort();
+    });
+  }
+  $('sort').addEventListener('change',applySort);
+  updateSortHeaders();await renderRows();
 }
 
 async function init() {
@@ -232,11 +269,11 @@ async function init() {
     }
     const legacySort=params.get('sort');
     const initialSort=legacySort==='rate'?'assessment-percent-gap':legacySort==='assessment-rate'?'assessment-percent-gap':legacySort?.startsWith('tax-')?'assessment-gap':legacySort||'assessment-gap';
-    await configureRecords(initialSort);
+    await configureRecords(initialSort,params.get('direction'));
     $('list-view').addEventListener('click',()=>setLayout('list'));$('map-view').addEventListener('click',()=>setLayout('map'));$('fit-map').addEventListener('click',fitMap);
     setLayout(params.get('layout'));
     $('search').addEventListener('input',()=>{clearMapFocus();page=1;clearTimeout(searchTimer);searchTimer=setTimeout(renderRows,300);});
-    for(const id of ['home-type','sort','location'])$(id).addEventListener('change',()=>{clearMapFocus();page=1;renderRows();});
+    for(const id of ['home-type','location'])$(id).addEventListener('change',()=>{clearMapFocus();page=1;renderRows();});
     $('previous').addEventListener('click',()=>{page--;renderRows();});$('next').addEventListener('click',()=>{page++;renderRows();});
     $('close-detail').addEventListener('click',()=>$('detail').close());
     $('detail').addEventListener('click',e=>{if(e.target===$('detail')){const r=$('detail').getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)$('detail').close();}});
