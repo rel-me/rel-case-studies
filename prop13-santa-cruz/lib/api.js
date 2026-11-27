@@ -21,7 +21,7 @@ function bounds(rows){
   if(!rows.length)return null;
   return [[Math.min(...rows.map(r=>r.latitude)),Math.min(...rows.map(r=>r.longitude))],[Math.max(...rows.map(r=>r.latitude)),Math.max(...rows.map(r=>r.longitude))]];
 }
-const PUBLIC_FIELDS=['record_id','address','city','postal_code','in_santa_cruz_city','municipality','home_type','estimated_value','assessed_value','latitude','longitude'];
+const PUBLIC_FIELDS=['record_id','address','parcel_number','city','postal_code','in_santa_cruz_city','municipality','home_type','estimated_value','assessed_value','latitude','longitude'];
 function publicRecord(record){return Object.fromEntries(PUBLIC_FIELDS.filter(key=>Object.hasOwn(record,key)).map(key=>[key,record[key]]));}
 export function createApi(snapshot){
   const records=snapshot.records, byId=new Map(records.map(r=>[r.record_id,r]));

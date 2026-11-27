@@ -83,7 +83,7 @@ test('single-record details, no-store responses and request throttling are enfor
 
 test('property browsing exposes only the two requested values',()=>{
   const records=[
-    {record_id:'aaaaaaaaaaaaaa',address:'1 Example',estimated_value:1000000,assessed_value:200000,annual_tax:3000,annual_paid:3000,assessment_gap:800000,benchmark_gap:7000,assessment_ratio:.2,effective_tax_rate:.003,latitude:36.98,longitude:-122.03},
+    {record_id:'aaaaaaaaaaaaaa',address:'1 Example',parcel_number:'00114135',estimated_value:1000000,assessed_value:200000,annual_tax:3000,annual_paid:3000,assessment_gap:800000,benchmark_gap:7000,assessment_ratio:.2,effective_tax_rate:.003,latitude:36.98,longitude:-122.03},
     {record_id:'bbbbbbbbbbbbbb',address:'2 Example',estimated_value:900000,assessed_value:300000,annual_tax:null,annual_paid:null,assessment_gap:600000,benchmark_gap:null,assessment_ratio:1/3,effective_tax_rate:null,latitude:36.981,longitude:-122.031},
     {record_id:'cccccccccccccc',address:'3 Example',estimated_value:800000,assessed_value:null,annual_tax:5000,annual_paid:null,assessment_gap:null,benchmark_gap:3000,assessment_ratio:null,effective_tax_rate:.00625,latitude:36.982,longitude:-122.032}
   ];
@@ -92,6 +92,7 @@ test('property browsing exposes only the two requested values',()=>{
   assert.equal(page.total,3);assert.equal(new Set(page.records.map(r=>r.record_id)).size,3);
   assert.deepEqual(page.records.map(r=>r.address),['1 Example','2 Example','3 Example']);
   assert.equal(page.records[0].estimated_value,1000000);assert.equal(page.records[0].assessed_value,200000);
+  assert.equal(page.records[0].parcel_number,'00114135');
   assert.equal(Object.keys(page.records[0]).some(key=>/paid|installment|annual_tax|payment|bill/i.test(key)),false);
   const params=new URLSearchParams({view:'all',bbox:'-122.04,36.97,-122.02,36.99',zoom:'19',color:'assessment'});
   const assessmentMap=combined('/api/map',params);
@@ -99,6 +100,8 @@ test('property browsing exposes only the two requested values',()=>{
   assert.equal(assessmentMap.points.find(r=>r.record_id===records[1].record_id).band,'mid');
   assert.equal(assessmentMap.points.find(r=>r.record_id===records[2].record_id).band,'missing');
   const detail=combined('/api/record',new URLSearchParams({id:assessmentMap.points[0].record_id}));
+  assert.equal(detail.parcel_number,'00114135');
+  assert.ok(assessmentMap.points.every(point=>!('parcel_number' in point)));
   assert.equal(detail.assessed_value,200000);assert.equal(detail.estimated_value,1000000);
   assert.equal(Object.keys(detail).some(key=>/paid|installment|annual_tax|payment|bill/i.test(key)),false);
   const byPercent=combined('/api/records',new URLSearchParams({view:'all',sort:'assessment-percent-gap'}));
