@@ -13,12 +13,33 @@ const $=id=>document.getElementById(id);
 function element(tag,text,className) { const el=document.createElement(tag); if(text!=null)el.textContent=text; if(className)el.className=className; return el; }
 let data, page=1, filtered=[], layout='list';
 let propertyMap, propertyMarkers, serverClusters, mapSelection='', mapTimer, mapAbort, rowAbort, searchTimer, pageInfo={};
+const selectedAreas=new Set();
 
 function fitMap() {
   if(propertyMap && pageInfo.bounds)propertyMap.fitBounds(pageInfo.bounds,{padding:[35,35],maxZoom:17,animate:false});
 }
 function filterParams(){
-  return new URLSearchParams({view:'all',location:$('location').value,q:$('search').value,type:$('home-type').value,sort:$('sort').value});
+  return new URLSearchParams({view:'all',location:$('location').value,q:$('search').value,type:$('home-type').value,sort:$('sort').value,areas:areaSelection()});
+}
+function areaSelection(){
+  return data.areas.filter(area=>selectedAreas.has(area.id)).map(area=>area.id).join(',');
+}
+function configureAreas(saved){
+  const savedAreas=saved===null?null:new Set(saved.split(','));
+  for(const area of data.areas){
+    if(savedAreas?savedAreas.has(area.id):area.selected)selectedAreas.add(area.id);
+    const button=element('button',area.label);
+    button.type='button';
+    button.setAttribute('aria-pressed',String(selectedAreas.has(area.id)));
+    button.addEventListener('click',()=>{
+      if(selectedAreas.has(area.id))selectedAreas.delete(area.id);
+      else selectedAreas.add(area.id);
+      button.setAttribute('aria-pressed',String(selectedAreas.has(area.id)));
+      page=1;
+      renderRows();
+    });
+    $('area-filters').append(button);
+  }
 }
 async function api(path,params=new URLSearchParams(),signal){
   const response=await fetch(BASE+'/api/'+path+'?'+params,{signal,cache:'no-store'});
@@ -96,6 +117,7 @@ function saveFilters() {
   const u=new URL(location.href);u.search='';
   if(layout==='map')u.searchParams.set('layout','map');
   for(const [key,value] of [['location',$('location').value],['q',$('search').value],['type',$('home-type').value],['sort',$('sort').value]])if(value && value!=='gap')u.searchParams.set(key,value);
+  u.searchParams.set('areas',areaSelection());
   history.replaceState(null,'',u);
 }
 
@@ -141,6 +163,7 @@ async function init() {
     const types=data.home_types;
     for(const type of types){const option=element('option',label(type));option.value=type;$('home-type').append(option);}
     const params=new URLSearchParams(location.search);if(['city','outside','unknown'].includes(params.get('location')))$('location').value=params.get('location');$('search').value=params.get('q')||'';if(types.includes(params.get('type')))$('home-type').value=params.get('type');
+    configureAreas(params.get('areas'));
     const legacySort=params.get('sort');
     const initialSort=legacySort==='rate'?'assessment-percent-gap':legacySort==='assessment-rate'?'assessment-percent-gap':legacySort?.startsWith('tax-')?'assessment-gap':legacySort||'assessment-gap';
     await configureRecords(initialSort);

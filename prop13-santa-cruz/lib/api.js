@@ -1,6 +1,8 @@
 import {selectRecords, hasLocation, mapBand} from './study.js';
+import {AREAS, propertyArea} from './areas.js';
 
 export const PAGE_LIMIT=25;
+const areaIds=new Set(AREAS.map(area=>area.id));
 const integer=(value,min,max,name)=>{
   if(!/^\d+$/.test(value) || !Number.isSafeInteger(Number(value)) || Number(value)<min || Number(value)>max) throw new Error('Invalid '+name);
   return Number(value);
@@ -10,7 +12,10 @@ function filters(params){
   if(!['all','assessment'].includes(mode)||!['','city','outside','unknown'].includes(location)||!['gap','rate','estimate','address','assessment-gap','assessment-rate','assessment-percent-gap','percent-gap'].includes(sort))throw new Error('Invalid filter');
   const q=params.get('q')||'',type=params.get('type')||'';
   if(q.length>100||type.length>60)throw new Error('Filter too long');
-  return {mode,q,type,sort,location};
+  const requested=params.get('areas');
+  const areas=requested===null?null:new Set(requested===''?[]:requested.split(','));
+  if(areas && [...areas].some(id=>!areaIds.has(id)))throw new Error('Invalid neighborhood');
+  return {mode,q,type,sort,location,areas};
 }
 function bounds(rows){
   if(!rows.length)return null;
@@ -20,7 +25,8 @@ const PUBLIC_FIELDS=['record_id','address','city','postal_code','in_santa_cruz_c
 function publicRecord(record){return Object.fromEntries(PUBLIC_FIELDS.filter(key=>Object.hasOwn(record,key)).map(key=>[key,record[key]]));}
 export function createApi(snapshot){
   const records=snapshot.records, byId=new Map(records.map(r=>[r.record_id,r]));
-  const summary={metadata:snapshot.metadata,home_types:[...new Set(records.map(r=>r.home_type).filter(Boolean))].sort()};
+  const areaByRecord=new Map(records.map(r=>[r,propertyArea(r)]));
+  const summary={metadata:snapshot.metadata,areas:AREAS,home_types:[...new Set(records.map(r=>r.home_type).filter(Boolean))].sort()};
   return function api(path,params){
     for(const key of params.keys())if(params.getAll(key).length>1)throw new Error('Duplicate parameter');
     if(path==='/api/summary')return summary;
@@ -29,7 +35,8 @@ export function createApi(snapshot){
       const record=byId.get(id);return record?publicRecord(record):null;
     }
     const f=filters(params);
-    const selected=selectRecords(records,f.mode,f.q,f.type,f.sort,f.location),located=selected.filter(hasLocation);
+    const candidates=f.areas===null?records:records.filter(record=>f.areas.has(areaByRecord.get(record)));
+    const selected=selectRecords(candidates,f.mode,f.q,f.type,f.sort,f.location),located=selected.filter(hasLocation);
     if(path==='/api/records'){
       const limit=integer(params.get('limit')||String(PAGE_LIMIT),1,PAGE_LIMIT,'page size');
       const page=Math.min(integer(params.get('page')||'1',1,10000,'page'),Math.max(1,Math.ceil(selected.length/limit)));

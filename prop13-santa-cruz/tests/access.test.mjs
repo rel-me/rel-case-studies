@@ -45,6 +45,32 @@ test('map serves bounded aggregates or at most 25 sparse property points',()=>{
   assert.deepEqual(Object.keys(close.points[0]).sort(),['band','latitude','longitude','record_id']);
 });
 
+test('neighborhood selections filter both views and preserve an empty selection', async()=>{
+  const records=[
+    {city:'Santa Cruz',postal_code:'95062',in_santa_cruz_city:true},
+    {city:'Santa Cruz',postal_code:'95062',in_santa_cruz_city:false},
+    {city:'Santa Cruz',postal_code:'95062',municipality:'City of Capitola',in_santa_cruz_city:false},
+    {city:'SOQUEL',postal_code:'95073'},
+    {city:'Aptos',postal_code:'95003'}
+  ].map((record,index)=>({...record,record_id:String(index).repeat(14),
+                          estimated_value:900000,latitude:36.98,longitude:-121.95}));
+  const neighborhoods=createApi({metadata:{},records});
+  const defaults=neighborhoods('/api/summary',new URLSearchParams()).areas
+    .filter(area=>area.selected).map(area=>area.id);
+  assert.deepEqual(defaults,['santa-cruz-city','live-oak','capitola','soquel']);
+  const params=new URLSearchParams({areas:defaults.join(','),bbox:'-122.4,36.7,-121.5,37.4',zoom:'19'});
+  for(const [areas,indices] of [[defaults.join(','),[0,1,2,3]],['capitola,soquel',[2,3]],['aptos',[4]],['',[]]]){
+    params.set('areas',areas);
+    assert.deepEqual(neighborhoods('/api/records',params).records.map(record=>Number(record.record_id[0])),indices);
+    assert.deepEqual(neighborhoods('/api/map',params).points.map(point=>Number(point.record_id[0])),indices);
+  }
+  params.set('areas','live-oak,capitola');
+  params.set('q','95062');
+  assert.equal(neighborhoods('/api/records',params).total,2);
+  const invalid=await worker.fetch(new Request(BASE+'/api/records?areas=elsewhere'),allowed);
+  assert.equal(invalid.status,400);
+});
+
 test('single-record details, no-store responses and request throttling are enforced',async()=>{
   const id=snapshot.records[0].record_id;
   const record=await worker.fetch(new Request(BASE+'/api/record?id='+id),allowed);assert.equal(record.status,200);assert.equal((await record.json()).record_id,id);assert.match(record.headers.get('Cache-Control'),/no-store/);
